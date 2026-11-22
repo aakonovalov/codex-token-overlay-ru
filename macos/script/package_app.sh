@@ -7,11 +7,11 @@ BUNDLE_ID="io.github.soleillevant0125.CodexTokenOverlay"
 MIN_SYSTEM_VERSION="14.0"
 ARCH="$(uname -m)"
 CONFIGURATION="release"
-VERSION="0.4.0"
+VERSION="0.4.1"
 OUTPUT_DIR=""
 
 usage() {
-  echo "Использование: $0 [--arch arm64|x86_64] [--configuration debug|release] [--version 0.4.0] [--output каталог]" >&2
+  echo "Использование: $0 [--arch arm64|x86_64] [--configuration debug|release] [--version $VERSION] [--output каталог]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
