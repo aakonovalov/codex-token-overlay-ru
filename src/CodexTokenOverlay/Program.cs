@@ -469,7 +469,7 @@ internal sealed class TokenLogMonitor : IDisposable
 
     public bool PinActiveSession { get; set; }
 
-    public TokenSnapshot? Poll(bool forceFullScan = false)
+    public TokenSnapshot? Poll(bool forceFullScan = false, bool requirePreferredThread = false)
     {
         if (!Directory.Exists(_sessionRoot))
         {
@@ -477,6 +477,13 @@ internal sealed class TokenLogMonitor : IDisposable
         }
 
         var usePreferredThread = !PinActiveSession && !string.IsNullOrWhiteSpace(PreferredThreadId);
+        if (requirePreferredThread && !PinActiveSession && !usePreferredThread)
+        {
+            ProcessChangedPaths(allowAutomaticSwitch: false);
+            SwitchActiveLog(null);
+            return null;
+        }
+
         ProcessChangedPaths(allowAutomaticSwitch: !usePreferredThread);
 
         if (usePreferredThread)

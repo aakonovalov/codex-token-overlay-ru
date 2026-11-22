@@ -6,7 +6,7 @@ internal sealed class OverlayContext : ApplicationContext
 {
     private readonly OverlaySettings _settings;
     private readonly ContextAlertTracker _contextAlerts = new();
-    private readonly CodexIpcActiveThreadMonitor _routeMonitor = new();
+    private readonly VisibleChatReader _visibleChat;
     private readonly TokenLogMonitor _monitor;
     private readonly TokenStripForm _form = new();
     private readonly AttachmentTargetHighlightForm _targetHighlight = new();
@@ -50,10 +50,11 @@ internal sealed class OverlayContext : ApplicationContext
     public OverlayContext(string sessionRoot, string? settingsPath = null)
     {
         _settingsPath = settingsPath;
+        _visibleChat = new VisibleChatReader(sessionRoot);
         _monitor = new TokenLogMonitor(sessionRoot);
         _settings = OverlaySettings.Load(_settingsPath);
         _presentation = OverlayPresentationBuilder.CreateWaiting(
-            "正在寻找当前 Codex 会话…",
+            "Поиск активного чата Codex…",
             _settings.CollapsedPrimaryField,
             _settings.CollapsedSecondaryField,
             _settings.VisibleFields);
@@ -64,42 +65,42 @@ internal sealed class OverlayContext : ApplicationContext
             ApplyTheme);
 
         var menu = new ContextMenuStrip();
-        _sessionMenuItem = new ToolStripMenuItem("会话：等待数据") { Enabled = false };
+        _sessionMenuItem = new ToolStripMenuItem("Ожидание данных чата") { Enabled = false };
         menu.Items.Add(_sessionMenuItem);
-        _pinSessionMenuItem = new ToolStripMenuItem("锁定当前会话") { Enabled = false, CheckOnClick = true };
+        _pinSessionMenuItem = new ToolStripMenuItem("Закрепить текущий чат") { Enabled = false, CheckOnClick = true };
         _pinSessionMenuItem.CheckedChanged += (_, _) =>
         {
             _monitor.PinActiveSession = _pinSessionMenuItem.Checked;
-            _pinSessionMenuItem.Text = _pinSessionMenuItem.Checked ? "已锁定当前会话" : "锁定当前会话";
+            _pinSessionMenuItem.Text = _pinSessionMenuItem.Checked ? "Текущий чат закреплён" : "Закрепить текущий чат";
             UpdateSessionMenuText();
         };
         menu.Items.Add(_pinSessionMenuItem);
         menu.Items.Add(new ToolStripSeparator());
 
-        _adjustManualMenuItem = new ToolStripMenuItem("调整位置和大小…");
+        _adjustManualMenuItem = new ToolStripMenuItem("Настроить положение и размер…");
         _adjustManualMenuItem.Click += (_, _) => BeginManualEditing();
         menu.Items.Add(_adjustManualMenuItem);
-        _saveManualMenuItem = new ToolStripMenuItem("完成调整") { Visible = false };
+        _saveManualMenuItem = new ToolStripMenuItem("Сохранить настройки") { Visible = false };
         _saveManualMenuItem.Click += (_, _) => SaveManualEditing();
         menu.Items.Add(_saveManualMenuItem);
-        _cancelManualMenuItem = new ToolStripMenuItem("取消调整") { Visible = false };
+        _cancelManualMenuItem = new ToolStripMenuItem("Отменить настройку") { Visible = false };
         _cancelManualMenuItem.Click += (_, _) => CancelManualEditing();
         menu.Items.Add(_cancelManualMenuItem);
-        _resetManualMenuItem = new ToolStripMenuItem("重置到 Codex 右上");
+        _resetManualMenuItem = new ToolStripMenuItem("Вернуть в правый верхний угол Codex");
         _resetManualMenuItem.Click += (_, _) => ResetManualPlacement();
         menu.Items.Add(_resetManualMenuItem);
 
-        _traditionalMenuItem = new ToolStripMenuItem("传统定位");
-        AddAnchorMenu(_traditionalMenuItem, "标题栏右上", AnchorMode.TitleBarTopRight);
-        AddAnchorMenu(_traditionalMenuItem, "自动吸附", AnchorMode.Auto);
-        AddAnchorMenu(_traditionalMenuItem, "窗口内右上", AnchorMode.InsideTopRight);
-        AddAnchorMenu(_traditionalMenuItem, "窗口内右下", AnchorMode.InsideBottomRight);
+        _traditionalMenuItem = new ToolStripMenuItem("Готовые варианты размещения");
+        AddAnchorMenu(_traditionalMenuItem, "Справа в заголовке", AnchorMode.TitleBarTopRight);
+        AddAnchorMenu(_traditionalMenuItem, "Автоматическая привязка", AnchorMode.Auto);
+        AddAnchorMenu(_traditionalMenuItem, "Внутри окна сверху справа", AnchorMode.InsideTopRight);
+        AddAnchorMenu(_traditionalMenuItem, "Внутри окна снизу справа", AnchorMode.InsideBottomRight);
         menu.Items.Add(_traditionalMenuItem);
         menu.Items.Add(new ToolStripSeparator());
 
-        var collapsedFieldsMenu = new ToolStripMenuItem("收起时显示");
-        var primaryMenu = new ToolStripMenuItem("左侧指标");
-        var secondaryMenu = new ToolStripMenuItem("右侧指标");
+        var collapsedFieldsMenu = new ToolStripMenuItem("В свёрнутом виде");
+        var primaryMenu = new ToolStripMenuItem("Показатель слева");
+        var secondaryMenu = new ToolStripMenuItem("Показатель справа");
         foreach (var field in DisplayFieldRules.Ordered)
         {
             var text = OverlayPresentationBuilder.GetFieldMenuText(field);
@@ -110,7 +111,7 @@ internal sealed class OverlayContext : ApplicationContext
         collapsedFieldsMenu.DropDownItems.Add(secondaryMenu);
         menu.Items.Add(collapsedFieldsMenu);
 
-        var fieldsMenu = new ToolStripMenuItem("显示字段");
+        var fieldsMenu = new ToolStripMenuItem("Показатели в подробностях");
         foreach (var field in DisplayFieldRules.Ordered)
         {
             AddVisibleFieldMenu(fieldsMenu, OverlayPresentationBuilder.GetFieldMenuText(field), field);
@@ -118,7 +119,7 @@ internal sealed class OverlayContext : ApplicationContext
         menu.Items.Add(fieldsMenu);
         menu.Items.Add(new ToolStripSeparator());
 
-        _visibilityMenuItem = new ToolStripMenuItem("暂时隐藏");
+        _visibilityMenuItem = new ToolStripMenuItem("Временно скрыть");
         _visibilityMenuItem.Click += (_, _) =>
         {
             if (_manualAttachment.IsEditing)
@@ -126,7 +127,7 @@ internal sealed class OverlayContext : ApplicationContext
                 CancelManualEditing();
             }
             _manuallyHidden = !_manuallyHidden;
-            _visibilityMenuItem.Text = _manuallyHidden ? "恢复显示" : "暂时隐藏";
+            _visibilityMenuItem.Text = _manuallyHidden ? "Показать снова" : "Временно скрыть";
             if (_manuallyHidden)
             {
                 CollapseAndHide();
@@ -138,17 +139,17 @@ internal sealed class OverlayContext : ApplicationContext
         };
         menu.Items.Add(_visibilityMenuItem);
 
-        var alertItem = new ToolStripMenuItem("上下文不足提醒") { CheckOnClick = true, Checked = _settings.ContextAlertsEnabled };
+        var alertItem = new ToolStripMenuItem("Уведомлять о заполнении контекста") { CheckOnClick = true, Checked = _settings.ContextAlertsEnabled };
         alertItem.CheckedChanged += (_, _) => { _settings.ContextAlertsEnabled = alertItem.Checked; _settings.Save(_settingsPath); };
         menu.Items.Add(alertItem);
-        var exitItem = new ToolStripMenuItem("退出");
+        var exitItem = new ToolStripMenuItem("Выход");
         exitItem.Click += (_, _) => ExitOverlay();
         menu.Items.Add(exitItem);
 
         _trayIcon = new NotifyIcon
         {
             Icon = SystemIcons.Information,
-            Text = "Codex Token 状态条",
+            Text = "Счётчик токенов Codex",
             Visible = true,
             ContextMenuStrip = menu
         };
@@ -322,12 +323,10 @@ internal sealed class OverlayContext : ApplicationContext
             _observedSessionVersion = _pendingSessionVersion;
             _observedThreadId = _pendingThreadId;
             _lastSnapshot = null;
-            var shortPendingId = string.IsNullOrWhiteSpace(_pendingThreadId)
-                ? "等待识别"
-                : OverlayPresentationBuilder.ShortThreadId(_pendingThreadId);
+            _trayIcon.Text = "Счётчик токенов Codex";
             _pinSessionMenuItem.Enabled = _pinSessionMenuItem.Checked;
             _presentation = OverlayPresentationBuilder.CreateWaiting(
-                $"等待会话 {shortPendingId} 的 token 数据…",
+                _pendingThreadId is null ? "Чат не определён" : "Ожидание данных о токенах…",
                 _settings.CollapsedPrimaryField,
                 _settings.CollapsedSecondaryField,
                 _settings.VisibleFields);
@@ -396,23 +395,18 @@ internal sealed class OverlayContext : ApplicationContext
         }
 
         var uiScheduler = TaskScheduler.FromCurrentSynchronizationContext();
+        var previousRoute = _pendingRouteStatus;
         _ = Task.Run(() =>
             {
-                var routeStatus = _routeMonitor.GetStatus();
-                var resumeLogFallback = false;
-                if (!_monitor.PinActiveSession)
-                {
-                    if (!string.IsNullOrWhiteSpace(routeStatus.ThreadId))
-                    {
-                        _monitor.PreferredThreadId = routeStatus.ThreadId;
-                    }
-                    else if (!routeStatus.IsConnected && _monitor.PreferredThreadId is not null)
-                    {
-                        _monitor.PreferredThreadId = null;
-                        resumeLogFallback = true;
-                    }
-                }
-                var snapshot = _monitor.Poll(forceFullScan: resumeLogFallback);
+                var threadId = CodexWindowLocator.TryGetForegroundCodexTarget(out var target)
+                    ? _visibleChat.ReadThreadId(target.HostWindow.Handle)
+                    : previousRoute.ThreadId;
+                var routeStatus = string.Equals(threadId, previousRoute.ThreadId, StringComparison.OrdinalIgnoreCase)
+                    ? previousRoute
+                    : new ActiveThreadRouteStatus(threadId, threadId is null ? 0 : 1, threadId is not null,
+                        previousRoute.Version + 1, null);
+                _monitor.PreferredThreadId = threadId;
+                var snapshot = _monitor.Poll(requirePreferredThread: true);
                 return (
                     Snapshot: snapshot,
                     Version: _monitor.ActiveSessionVersion,
@@ -442,7 +436,7 @@ internal sealed class OverlayContext : ApplicationContext
     {
         _presentation = _lastSnapshot is null
             ? OverlayPresentationBuilder.CreateWaiting(
-                "正在寻找当前 Codex 会话…",
+                "Поиск активного чата Codex…",
                 _settings.CollapsedPrimaryField,
                 _settings.CollapsedSecondaryField,
                 _settings.VisibleFields)
@@ -640,7 +634,7 @@ internal sealed class OverlayContext : ApplicationContext
         }
         if (!_manualAttachment.CanSave)
         {
-            NotifySaveFailure("请先将状态条拖到 Codex 主窗口上。");
+            NotifySaveFailure("Сначала перетащите виджет на главное окно Codex.");
             return;
         }
 
@@ -650,7 +644,7 @@ internal sealed class OverlayContext : ApplicationContext
         if (!_settings.TrySave(_settingsPath))
         {
             ApplySnapshotToSettings(original);
-            NotifySaveFailure("无法保存设置，请检查设置文件权限后重试。");
+            NotifySaveFailure("Не удалось сохранить настройки. Проверьте права доступа к файлу настроек и повторите попытку.");
             return;
         }
 
@@ -687,8 +681,8 @@ internal sealed class OverlayContext : ApplicationContext
         {
             _trayIcon.ShowBalloonTip(
                 3000,
-                "Codex Token 状态条",
-                "无法保存重置后的设置。",
+                "Счётчик токенов Codex",
+                "Не удалось сохранить настройки после сброса.",
                 ToolTipIcon.Warning);
         }
 
@@ -798,7 +792,7 @@ internal sealed class OverlayContext : ApplicationContext
         _saveFailureNotified = true;
         _trayIcon.ShowBalloonTip(
             3000,
-            "Codex Token 状态条",
+            "Счётчик токенов Codex",
             message,
             ToolTipIcon.Warning);
     }
@@ -907,14 +901,14 @@ internal sealed class OverlayContext : ApplicationContext
     {
         var threadId = _lastSnapshot?.ThreadId ?? _pendingThreadId;
         var shortId = string.IsNullOrWhiteSpace(threadId)
-            ? "等待识别"
+            ? "поиск"
             : OverlayPresentationBuilder.ShortThreadId(threadId);
-        var routeText = _pinSessionMenuItem.Checked ? "已锁定"
-            : HasMatchingRoute(threadId) ? "已同步"
-            : "日志模式";
+        var routeText = _pinSessionMenuItem.Checked ? "закреплён"
+            : HasMatchingRoute(threadId) ? "синхронизирован"
+            : "не определён";
         var windowCount = _pendingRouteStatus.ActiveWindowCount;
-        var windowText = windowCount > 1 ? $" · 多窗口 {windowCount}" : string.Empty;
-        _sessionMenuItem.Text = $"会话：{shortId} · {routeText}{windowText}";
+        var windowText = windowCount > 1 ? $" · окон {windowCount}" : string.Empty;
+        _sessionMenuItem.Text = $"Чат {shortId} · {routeText}{windowText}";
     }
 
     private bool HasMatchingRoute(string? threadId) =>
@@ -937,8 +931,8 @@ internal sealed class OverlayContext : ApplicationContext
         {
             var remaining = 100 - snapshot.ContextPercent;
             var threadId = OverlayPresentationBuilder.ShortThreadId(snapshot.ThreadId);
-            _trayIcon.ShowBalloonTip(10000, "Codex 上下文不足",
-                $"会话 {threadId}：上下文剩余 {remaining:0.0}%。建议保存当前结论与待办，准备压缩或新开对话。",
+            _trayIcon.ShowBalloonTip(10000, "Контекст Codex почти заполнен",
+                $"В чате {threadId} осталось {remaining:0.0}% контекста. Сохраните результаты и список дел перед сжатием контекста или переходом в новый чат.",
                 threshold <= 5 ? ToolTipIcon.Error : ToolTipIcon.Warning);
         }
     }
@@ -981,7 +975,6 @@ internal sealed class OverlayContext : ApplicationContext
             _outsideClickTimer.Dispose();
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
-            _routeMonitor.Dispose();
             _monitor.Dispose();
             DisposeThemeAndForms();
         }

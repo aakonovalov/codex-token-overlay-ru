@@ -91,17 +91,17 @@ internal static class OverlayPresentationBuilder
     {
         return field switch
         {
-            DisplayField.Total => "总 token",
-            DisplayField.Input => "输入 token",
-            DisplayField.Output => "输出 token",
-            DisplayField.CacheHit => "缓存命中",
-            DisplayField.CacheHitRate => "缓存命中率",
-            DisplayField.CacheMiss => "缓存未命中（推导）",
-            DisplayField.Context => "上下文用量",
-            DisplayField.ContextRemaining => "上下文剩余百分比",
-            DisplayField.ContextPercent => "上下文百分比",
-            DisplayField.Reasoning => "推理输出",
-            DisplayField.Thread => "会话 ID",
+            DisplayField.Total => "Всего токенов",
+            DisplayField.Input => "Входные токены",
+            DisplayField.Output => "Выходные токены",
+            DisplayField.CacheHit => "Токены из кэша",
+            DisplayField.CacheHitRate => "Доля токенов из кэша",
+            DisplayField.CacheMiss => "Токены вне кэша (расчёт)",
+            DisplayField.Context => "Использовано контекста",
+            DisplayField.ContextRemaining => "Свободный контекст (%)",
+            DisplayField.ContextPercent => "Использовано контекста (%)",
+            DisplayField.Reasoning => "Токены рассуждения",
+            DisplayField.Thread => "ID чата",
             _ => throw new ArgumentOutOfRangeException(nameof(field), field, "不支持的展示字段。")
         };
     }
@@ -169,17 +169,17 @@ internal static class OverlayPresentationBuilder
     {
         return field switch
         {
-            DisplayField.Total => ("总", "总 Token"),
-            DisplayField.Input => ("入", "输入"),
-            DisplayField.Output => ("出", "输出"),
-            DisplayField.CacheHit => ("命中", "缓存命中"),
-            DisplayField.CacheHitRate => ("命中率", "缓存命中率"),
-            DisplayField.CacheMiss => ("未中", "缓存未命中"),
-            DisplayField.Context => ("上下文", "上下文用量"),
-            DisplayField.ContextRemaining => ("剩余", "上下文剩余"),
-            DisplayField.ContextPercent => ("上下文", "上下文占用"),
-            DisplayField.Reasoning => ("推理", "推理输出"),
-            DisplayField.Thread => ("会话", "会话"),
+            DisplayField.Total => ("Всего", "Всего токенов"),
+            DisplayField.Input => ("Вход", "Входные токены"),
+            DisplayField.Output => ("Выход", "Выходные токены"),
+            DisplayField.CacheHit => ("Кэш", "Токены из кэша"),
+            DisplayField.CacheHitRate => ("Кэш %", "Доля токенов из кэша"),
+            DisplayField.CacheMiss => ("Вне кэша", "Токены вне кэша"),
+            DisplayField.Context => ("Контекст", "Занято контекста"),
+            DisplayField.ContextRemaining => ("Ост.", "Свободный контекст"),
+            DisplayField.ContextPercent => ("Контекст", "Заполнено (%)"),
+            DisplayField.Reasoning => ("Рассужд.", "Токены рассуждения"),
+            DisplayField.Thread => ("Чат", "Чат"),
             _ => throw new ArgumentOutOfRangeException(nameof(field), field, "不支持的展示字段。")
         };
     }

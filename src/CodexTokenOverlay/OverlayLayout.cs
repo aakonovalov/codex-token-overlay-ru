@@ -70,11 +70,11 @@ internal sealed record OverlayLayoutResult(
 
 internal static class OverlayLayoutCalculator
 {
-    private const int CollapsedWidthDip = 196;
-    private const int TitleBarCollapsedWidthDip = 240;
-    private const int PrimaryOnlyWidthDip = 116;
+    private const int CollapsedWidthDip = 232;
+    private const int TitleBarCollapsedWidthDip = 264;
+    private const int PrimaryOnlyWidthDip = 128;
     private const int CollapsedHeightDip = 34;
-    private const int ExpandedWidthDip = 270;
+    private const int ExpandedWidthDip = 300;
     private const int CapsulePanelGapDip = 6;
     private const int CaptionSafetyGapDip = 8;
     private const int TitleLeftReserveDip = 160;

@@ -49,10 +49,10 @@ internal readonly record struct OverlayRenderMetrics(
             MidpointRounding.AwayFromZero);
 
         return new OverlayRenderMetrics(
-            ScaleFont(10d),
+            ScaleFont(9d),
+            ScaleFont(11d),
             ScaleFont(12d),
-            ScaleFont(13d),
-            ScaleFont(15d),
+            ScaleFont(14d),
             Scale(10),
             Scale(14),
             Scale(10),
@@ -175,7 +175,7 @@ internal sealed class TokenStripForm : Form
                 true,
                 true,
                 true,
-                "拖动调整位置",
+                "Перетащите виджет",
                 new IntRect(
                     content.Left,
                     content.Top,
@@ -769,7 +769,7 @@ internal sealed class TokenStripForm : Form
         var headerHeight = metrics.HeaderHeight;
         TextRenderer.DrawText(
             graphics,
-            "Token 详情",
+            "Расход токенов",
             headerFont,
             new Rectangle(content.Left, content.Top, content.Width, headerHeight),
             _palette.Value,
