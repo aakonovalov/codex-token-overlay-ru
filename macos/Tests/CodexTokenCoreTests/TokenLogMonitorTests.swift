@@ -58,13 +58,13 @@ final class TokenLogMonitorTests: XCTestCase {
         let monitor = TokenLogMonitor(sessionRoot: temporaryRoot.path)
         XCTAssertEqual(monitor.poll(forceFullScan: true)?.threadID, newestThread)
 
-        // 模拟 IPC 在界面切换到一个未继续写日志的旧任务。
+        // Имитируем переключение IPC на старую задачу, в журнал которой больше не поступают записи.
         monitor.preferredThreadID = idleThread
         let idleSnapshot = monitor.poll(forceFullScan: true)
         XCTAssertEqual(idleSnapshot?.threadID, idleThread)
         XCTAssertEqual(idleSnapshot?.totalTokens, 1_000)
 
-        // 模拟 IPC 真正断连：清除 preferred 后才退回最近根会话。
+        // Имитируем полное отключение IPC: последняя корневая сессия выбирается только после сброса preferred.
         monitor.preferredThreadID = nil
         XCTAssertEqual(monitor.poll(forceFullScan: true)?.threadID, newestThread)
     }

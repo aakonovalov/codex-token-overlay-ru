@@ -1,4 +1,4 @@
-# .NET 构建输出
+# Результаты сборки
 bin/
 obj/
 artifacts/
@@ -7,7 +7,7 @@ publish/
 dist/
 .swiftpm/
 
-# IDE 与用户设置
+# Настройки IDE и пользователя
 .vs/
 .vscode/
 .idea/
@@ -16,16 +16,16 @@ dist/
 *.userosscache
 *.sln.docstates
 
-# 本地探针输出
+# Результаты локальных проверок
 probe.json
 window-probe.json
 ipc-probe.json
 
-# Superpowers 本地设计草图会话
+# Локальные материалы Superpowers
 .superpowers/
 .worktrees/
 
-# 操作系统临时文件
+# Временные файлы операционной системы
 Thumbs.db
 Desktop.ini
 .DS_Store

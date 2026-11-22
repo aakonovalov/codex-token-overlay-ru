@@ -696,13 +696,13 @@ internal static class CodexWindowLocator
                 return false;
             }
 
-            // Microsoft Store/MSIX 版仍使用 ChatGPT.exe，但安装包路径可稳定区分 Codex。
+            // Версия из Microsoft Store/MSIX тоже использует ChatGPT.exe, но путь пакета позволяет надёжно отличить Codex.
             if (executablePath.Contains("\\WindowsApps\\OpenAI.Codex_", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
-            // 兼容未来或企业分发的独立 Codex.exe。
+            // Поддерживаем отдельный Codex.exe для будущих и корпоративных сборок.
             if (executableName.Equals("Codex.exe", StringComparison.OrdinalIgnoreCase))
             {
                 return true;

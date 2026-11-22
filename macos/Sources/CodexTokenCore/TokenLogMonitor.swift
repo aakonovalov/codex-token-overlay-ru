@@ -50,7 +50,7 @@ public final class TokenLogMonitor {
         }
 
         if let parsed = readLatestTokenSnapshot(path: activeLogPath, modificationDate: modificationDate) {
-            // 只有完整 JSON 行成功解析后才提交文件版本，避免卡在写到一半的末行。
+            // Обновляем версию файла только после разбора полной строки JSON, чтобы не застрять на частично записанной последней строке.
             activeModificationDate = modificationDate
             lastSnapshot = parsed
         }
@@ -156,7 +156,7 @@ public final class TokenLogMonitor {
             rootSessionCache[path] = isRoot
             return isRoot
         } catch {
-            // Created 事件可能早于首行写完，失败结果不缓存，下一轮会重试。
+            // Событие Created может прийти до записи первой строки. Повторим попытку в следующем цикле.
             return false
         }
     }
@@ -181,7 +181,7 @@ public final class TokenLogMonitor {
             firstLine.append(chunk)
         }
 
-        // 超大首行既不应无限分配，也不能用截断 JSON 进行错误判定。
+        // Для слишком длинной первой строки нельзя бесконечно выделять память или проверять обрезанный JSON.
         return nil
     }
 
@@ -215,7 +215,7 @@ public final class TokenLogMonitor {
                 var text = String(decoding: data, as: UTF8.self)
 
                 if blockStart > 0 {
-                    // 块首可能位于 UTF-8/JSON 行中间，丢弃第一条残缺物理行。
+                    // Начало блока может попасть в середину строки UTF-8/JSON, поэтому отбрасываем первую неполную физическую строку.
                     if let newline = text.firstIndex(of: "\n") {
                         text = String(text[text.index(after: newline)...])
                     } else {
@@ -237,7 +237,7 @@ public final class TokenLogMonitor {
                 blockEnd = min(fileLength, blockStart + Self.historicalOverlapBytes)
             }
         } catch {
-            // Codex 可能正在追加或轮转日志；保留上一帧并在下一轮重试。
+                // Codex может дописывать или заменять журнал. Сохраняем предыдущий снимок и повторяем попытку в следующем цикле.
         }
 
         return nil
@@ -280,7 +280,7 @@ public final class TokenLogMonitor {
                     updatedAt: modificationDate
                 )
             } catch {
-                // 最后一行可能尚未写完，继续寻找前一个完整快照。
+                // Последняя строка может быть ещё не дописана. Ищем предыдущий полный снимок.
             }
         }
 

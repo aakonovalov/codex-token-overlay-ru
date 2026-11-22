@@ -5,7 +5,7 @@ import CodexTokenCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let visibleFieldsKey = "visibleFields"
-    private static let repositoryURL = URL(string: "https://github.com/soleillevant0125/codex-token-overlay")!
+    private static let repositoryURL = URL(string: "https://github.com/aakonovalov/codex-token-overlay-ru")!
 
     private let routeMonitor = CodexIPCActiveThreadMonitor()
     private let routePreferenceTracker = ActiveThreadPreferenceTracker()
@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         summaryMenuItem.isEnabled = false
         menu.addItem(summaryMenuItem)
 
-        taskMenuItem = NSMenuItem(title: "\(L10n.currentTask)：—", action: nil, keyEquivalent: "")
+        taskMenuItem = NSMenuItem(title: "\(L10n.currentTask): —", action: nil, keyEquivalent: "")
         taskMenuItem.isEnabled = false
         menu.addItem(taskMenuItem)
 
@@ -208,11 +208,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateMenu(snapshot: TokenSnapshot?, routeStatus: ActiveThreadRouteStatus) {
         if let snapshot {
             summaryMenuItem.title = TokenFormatter.fullSummary(snapshot: snapshot)
-            taskMenuItem.title = "\(L10n.currentTask)：\(TokenFormatter.shortThreadID(snapshot.threadID))"
+            taskMenuItem.title = "\(L10n.currentTask): \(TokenFormatter.shortThreadID(snapshot.threadID))"
         } else {
             summaryMenuItem.title = L10n.noTokenSnapshot
             let routeThread = routeStatus.threadID.map(TokenFormatter.shortThreadID) ?? "—"
-            taskMenuItem.title = "\(L10n.currentTask)：\(routeThread)"
+            taskMenuItem.title = "\(L10n.currentTask): \(routeThread)"
         }
 
         routeMenuItem.title = routeStatus.isConnected ? L10n.ipcConnected : L10n.ipcFallback

@@ -13,7 +13,7 @@ APP_BINARY="$APP_BUNDLE/Contents/MacOS/$PROCESS_NAME"
 ARCH="$(uname -m)"
 
 if [[ "$ARCH" != "arm64" && "$ARCH" != "x86_64" ]]; then
-  echo "unsupported macOS architecture: $ARCH" >&2
+  echo "Неподдерживаемая архитектура macOS: $ARCH" >&2
   exit 2
 fi
 
@@ -50,7 +50,7 @@ case "$MODE" in
     pgrep -x "$PROCESS_NAME" >/dev/null
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "Использование: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
     exit 2
     ;;
 esac

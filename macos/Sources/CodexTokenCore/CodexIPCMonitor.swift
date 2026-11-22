@@ -34,7 +34,7 @@ public final class ActiveThreadPreferenceTracker {
 
     public func preferredThreadID(for status: ActiveThreadRouteStatus) -> String? {
         guard status.isConnected else {
-            // 真正断连后必须允许日志监视器退回最近根会话。
+            // После фактического отключения монитор журналов должен перейти к последней корневой сессии.
             lastKnownThreadID = nil
             return nil
         }
@@ -42,7 +42,7 @@ public final class ActiveThreadPreferenceTracker {
         if let threadID = status.threadID {
             lastKnownThreadID = threadID
         }
-        // following=false 与下一条 following=true 之间保留旧任务，避免短暂跳错日志。
+        // Между following=false и следующим following=true сохраняем прежнюю задачу, чтобы не переключиться на неверный журнал.
         return status.threadID ?? lastKnownThreadID
     }
 }
@@ -177,7 +177,7 @@ final class SocketCandidateSelector {
             let index = (nextIndex + offset) % candidates.count
             let candidate = candidates[index]
             if isUsable(candidate) {
-                // 连接失败后的下一轮会继续尝试后续候选，避免残留主 Socket 阻塞回退。
+                // После ошибки подключения следующий цикл проверит остальные варианты, чтобы оставшийся основной сокет не блокировал переход.
                 nextIndex = (index + 1) % candidates.count
                 return candidate
             }
@@ -260,7 +260,7 @@ public final class CodexIPCActiveThreadMonitor {
         }
 
         guard let socketPath = selectSocketPath() else {
-            publishDisconnected(error: "Codex IPC Socket 尚未出现", socketPath: nil)
+            publishDisconnected(error: "Сокет Codex IPC ещё не появился", socketPath: nil)
             scheduleReconnect()
             return
         }
@@ -343,7 +343,7 @@ public final class CodexIPCActiveThreadMonitor {
                 connection: connection,
                 socketPath: nil,
                 generation: generation,
-                error: "无法编码 Codex IPC 初始化消息"
+                error: "Не удалось закодировать сообщение инициализации Codex IPC"
             )
             return
         }
@@ -508,7 +508,7 @@ public final class CodexIPCActiveThreadMonitor {
                 return false
             }
 
-            // 回退目录必须仍由当前用户独占，避免连接到可被其他用户替换的 Socket。
+            // Каталог для перехода должен оставаться доступным только текущему пользователю, чтобы исключить подмену сокета другим пользователем.
             var directoryMetadata = stat()
             let directoryPath = (path as NSString).deletingLastPathComponent
             guard lstat(directoryPath, &directoryMetadata) == 0,
@@ -585,7 +585,7 @@ private enum IPCMonitorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidFrameLength(let length):
-            return "Codex IPC 帧长度无效：\(length)"
+            return "Недопустимая длина кадра Codex IPC: \(length)"
         }
     }
 }

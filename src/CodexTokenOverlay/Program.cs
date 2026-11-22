@@ -173,7 +173,7 @@ internal sealed class CodexIpcActiveThreadMonitor : IDisposable
                     var frameLength = BinaryPrimitives.ReadUInt32LittleEndian(prefix);
                     if (frameLength == 0 || frameLength > MaximumWireFrameBytes)
                     {
-                        throw new InvalidDataException($"Codex IPC 帧长度无效：{frameLength}");
+                        throw new InvalidDataException($"Недопустимая длина кадра Codex IPC: {frameLength}");
                     }
 
                     if (frameLength > MaximumJsonFrameBytes)
@@ -193,7 +193,7 @@ internal sealed class CodexIpcActiveThreadMonitor : IDisposable
                     }
                     catch (Exception exception) when (exception is JsonException or InvalidOperationException)
                     {
-                        // 单个未知或不完整消息不应终止整个 IPC 监听。
+                        // Одно неизвестное или неполное сообщение не должно останавливать прослушивание IPC.
                     }
                 }
             }
@@ -399,7 +399,7 @@ internal sealed class CodexIpcActiveThreadMonitor : IDisposable
             var read = await stream.ReadAsync(buffer.AsMemory(0, requested), cancellationToken).ConfigureAwait(false);
             if (read == 0)
             {
-                throw new EndOfStreamException("Codex IPC 在完整帧到达前关闭。");
+                throw new EndOfStreamException("Соединение Codex IPC закрыто до получения кадра целиком.");
             }
             remaining -= read;
         }
@@ -418,7 +418,7 @@ internal sealed class CodexIpcActiveThreadMonitor : IDisposable
         }
         catch (AggregateException)
         {
-            // 退出时取消后台读取属于正常流程。
+            // При завершении отмена фонового чтения — штатная ситуация.
         }
         _cancellation.Dispose();
     }
@@ -518,7 +518,7 @@ internal sealed class TokenLogMonitor : IDisposable
         var parsed = TryReadLatestTokenSnapshot(_activeLogPath, writeUtc);
         if (parsed is not null)
         {
-            // 只有完整解析成功后才提交文件版本，避免卡在写到一半的 JSON 行。
+            // Обновляем версию файла только после успешного полного разбора, чтобы не застрять на частично записанной строке JSON.
             _activeWriteUtc = writeUtc;
             _lastSnapshot = parsed;
         }
@@ -599,7 +599,7 @@ internal sealed class TokenLogMonitor : IDisposable
         }
         catch (ArgumentException)
         {
-            // IPC 会话 ID 理论上是 UUID；异常输入只显示等待状态。
+            // Идентификатор сессии IPC обычно имеет формат UUID; при некорректном значении показываем состояние ожидания.
             SwitchActiveLog(null, threadId);
         }
     }
@@ -635,11 +635,11 @@ internal sealed class TokenLogMonitor : IDisposable
         }
         catch (IOException)
         {
-            // Codex 正在轮转日志时，下一个轮询周期会重试。
+            // Если Codex ротирует журнал, повторим попытку при следующем опросе.
         }
         catch (UnauthorizedAccessException)
         {
-            // 个别旧目录不可读时保留上一次成功结果。
+            // Если отдельная старая папка недоступна для чтения, сохраняем последний успешный результат.
         }
     }
 
@@ -657,7 +657,7 @@ internal sealed class TokenLogMonitor : IDisposable
             var firstLine = reader.ReadLine();
             if (string.IsNullOrWhiteSpace(firstLine))
             {
-                // Created 事件可能早于 Codex 写完首行，不能把暂时失败永久缓存。
+                // Событие Created может прийти до того, как Codex допишет первую строку; временную ошибку нельзя кэшировать навсегда.
                 return false;
             }
 
@@ -686,8 +686,8 @@ internal sealed class TokenLogMonitor : IDisposable
                 return false;
             }
 
-            // Desktop 根会话首行固定为 source="vscode"；子代理后续会重放父会话，
-            // 因此必须只检查第一物理行并严格匹配字符串，不能搜索整份文件。
+            // Первая строка корневой сессии Desktop всегда содержит source="vscode"; дочерние агенты позднее воспроизводят родительскую сессию,
+            // поэтому проверяем только первую физическую строку на точное совпадение, не просматривая весь файл.
             var isRoot = payload.TryGetProperty("source", out var source)
                 && source.ValueKind == JsonValueKind.String
                 && string.Equals(source.GetString(), "vscode", StringComparison.OrdinalIgnoreCase);
@@ -696,7 +696,7 @@ internal sealed class TokenLogMonitor : IDisposable
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         {
-            // 首行可能仍在写入；不缓存失败，下次 Changed 或全扫描会重试。
+            // Первая строка может ещё записываться; не кэшируем ошибку и повторяем проверку при Changed или полном сканировании.
             return false;
         }
     }
@@ -744,7 +744,7 @@ internal sealed class TokenLogMonitor : IDisposable
                 var text = Encoding.UTF8.GetString(buffer, 0, offset);
                 if (blockStart > 0)
                 {
-                    // 当前块可能从一行中间开始；下一块会以重叠区补齐这行。
+                    // Текущий блок может начинаться в середине строки; следующий блок захватит перекрывающийся участок и дополнит её.
                     var firstNewLine = text.IndexOf('\n');
                     text = firstNewLine >= 0 ? text[(firstNewLine + 1)..] : string.Empty;
                 }
@@ -764,7 +764,7 @@ internal sealed class TokenLogMonitor : IDisposable
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         {
-            // 日志可能正写到一半；保留上一帧，下一次更新会再次解析。
+            // Запись журнала может быть незавершённой; сохраняем предыдущий снимок и повторяем разбор при следующем обновлении.
         }
 
         return null;
@@ -831,7 +831,7 @@ internal sealed class TokenLogMonitor : IDisposable
             }
             catch (JsonException)
             {
-                // Codex 可能正在追加最后一行；继续寻找前一个完整快照。
+                // Codex может дописывать последнюю строку; продолжаем поиск предыдущего полного снимка.
             }
         }
 

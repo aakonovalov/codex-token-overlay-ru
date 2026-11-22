@@ -800,7 +800,7 @@ internal sealed class OverlayContext : ApplicationContext
     private Point CurrentCapsuleCenter()
     {
         var layout = _form.CurrentLayout
-            ?? throw new InvalidOperationException("编辑布局尚未建立。");
+            ?? throw new InvalidOperationException("Режим редактирования макета ещё не настроен.");
         return new Point(
             _form.Left + layout.CapsuleBounds.X + (layout.CapsuleBounds.Width / 2),
             _form.Top + layout.CapsuleBounds.Y + (layout.CapsuleBounds.Height / 2));

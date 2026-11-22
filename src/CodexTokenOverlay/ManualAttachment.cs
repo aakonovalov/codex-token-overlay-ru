@@ -41,8 +41,9 @@ internal static class ManualAttachmentRules
     public const int DefaultScalePercent = 100;
     public const double MaximumAbsoluteOffsetDip = 4096d;
 
+    // Оставляем место кнопкам окна при увеличении виджета до 130% из начальной позиции.
     public static readonly WindowAttachment DefaultMainAttachment =
-        new(AttachmentReferencePoint.TopRight, -344d, 24d);
+        new(AttachmentReferencePoint.TopRight, -366d, 24d);
 
     public static int SanitizeScale(int? value) =>
         Math.Clamp(value ?? DefaultScalePercent, MinimumScalePercent, MaximumScalePercent);
@@ -202,14 +203,14 @@ internal sealed class ManualPlacementEditState
     public bool IsActive => _draft is not null;
 
     public ManualPlacementSnapshot Draft =>
-        _draft ?? throw new InvalidOperationException("手动定位编辑尚未开始。");
+        _draft ?? throw new InvalidOperationException("Редактирование ручного расположения ещё не начато.");
 
     public void Begin(ManualPlacementSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         if (IsActive)
         {
-            throw new InvalidOperationException("手动定位编辑已经开始。");
+            throw new InvalidOperationException("Редактирование ручного расположения уже начато.");
         }
 
         _original = snapshot;
@@ -246,7 +247,7 @@ internal sealed class ManualPlacementEditState
     {
         _ = Draft;
         var original = _original
-            ?? throw new InvalidOperationException("手动定位编辑尚未开始。");
+            ?? throw new InvalidOperationException("Редактирование ручного расположения ещё не начато.");
         End();
         return original;
     }
@@ -409,7 +410,7 @@ internal sealed class ManualAttachmentCoordinator
     {
         if (!CanSave)
         {
-            throw new InvalidOperationException("当前手势没有有效的 Codex 吸附目标。");
+            throw new InvalidOperationException("Для текущего жеста нет допустимого окна Codex, к которому можно привязаться.");
         }
 
         var committed = _editState.Commit() with { Enabled = true };

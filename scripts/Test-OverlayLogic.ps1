@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateSet('Settings', 'Presentation', 'Layout', 'Interaction', 'Window', 'Form', 'Attachment', 'Theme', 'All')]
     [string]$Area = 'All',
     [string]$DotnetPath = 'dotnet',
@@ -12,7 +12,7 @@ $areas = if ($Area -eq 'All') { $implementedAreas } else { @($Area) }
 
 $unsupportedAreas = $areas | Where-Object { $_ -notin $implementedAreas }
 if ($unsupportedAreas.Count -gt 0) {
-    throw "尚未实现测试区域：$($unsupportedAreas -join ', ')"
+    throw "Тестирование не поддерживается для областей: $($unsupportedAreas -join ', ')"
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
@@ -92,7 +92,7 @@ function Get-MethodCallTokens {
             $first
         }
         $opcode = $opcodeLookup[$value]
-        if ($null -eq $opcode) { throw "未知 IL opcode：$value" }
+        if ($null -eq $opcode) { throw "Неизвестный код операции IL: $value" }
         $operandStart = $offset
         $operandLength = switch ($opcode.OperandType.ToString()) {
             'InlineNone' { 0 }
@@ -112,7 +112,7 @@ function Get-MethodCallTokens {
             'InlineI8' { 8 }
             'InlineR' { 8 }
             'InlineSwitch' { 4 + (4 * [BitConverter]::ToInt32($bytes, $offset)) }
-            default { throw "不支持的 IL operand：$($opcode.OperandType)" }
+            default { throw "Неподдерживаемый операнд IL: $($opcode.OperandType)" }
         }
         if ($opcode.OperandType.ToString() -eq 'InlineMethod') {
             $tokens += [BitConverter]::ToInt32($bytes, $operandStart)
@@ -167,7 +167,7 @@ function Get-ProbeCase {
 
     $case = @($Response.Cases | Where-Object { $_.Name -eq $Name })
     if ($case.Count -ne 1) {
-        throw "设置探针未返回唯一案例：$Name"
+        throw "Проверка настроек должна вернуть один результат для сценария: $Name"
     }
 
     return $case[0]
@@ -196,14 +196,14 @@ function Assert-InteractionTrace {
     )
 
     $actual = @($Case.Events)
-    Assert-Condition ($actual.Count -eq $Expected.Count) "交互案例 $($Case.Name) 的状态轨迹长度不正确。"
+    Assert-Condition ($actual.Count -eq $Expected.Count) "У сценария $($Case.Name) неверное число переходов состояния."
     for ($index = 0; $index -lt $Expected.Count; $index++) {
         $actualEvent = $actual[$index]
         $expectedEvent = $Expected[$index]
-        Assert-Condition ($actualEvent.State -eq $expectedEvent.State) "交互案例 $($Case.Name) 的第 $index 步状态不正确。"
-        Assert-Condition ($actualEvent.ShouldPollOutsideClicks -eq $expectedEvent.Polling) "交互案例 $($Case.Name) 的第 $index 步轮询状态不正确。"
-        Assert-Condition ($actualEvent.IsWaitingForOpeningClickRelease -eq $expectedEvent.WaitingForRelease) "交互案例 $($Case.Name) 的第 $index 步打开点击释放状态不正确。"
-        Assert-Condition ($actualEvent.StateChanged -eq $expectedEvent.StateChanged) "交互案例 $($Case.Name) 的第 $index 步状态变更结果不正确。"
+        Assert-Condition ($actualEvent.State -eq $expectedEvent.State) "Неверное состояние на шаге $index сценария $($Case.Name)."
+        Assert-Condition ($actualEvent.ShouldPollOutsideClicks -eq $expectedEvent.Polling) "Статус опроса шага $index случая взаимодействия $($Case.Name) неверен."
+        Assert-Condition ($actualEvent.IsWaitingForOpeningClickRelease -eq $expectedEvent.WaitingForRelease) "На этапе $index интерактивного случая $($Case.Name) состояние открытия щелчком мыши является неправильным."
+        Assert-Condition ($actualEvent.StateChanged -eq $expectedEvent.StateChanged) "Неверный признак изменения состояния на шаге $index сценария $($Case.Name)."
     }
 }
 
@@ -237,11 +237,11 @@ function Invoke-JsonProbe {
         if (-not $probeProcess.WaitForExit(10000)) {
             $probeProcess.Kill()
             $probeProcess.WaitForExit()
-            throw "设置探针未在 10 秒内生成结果：$Mode"
+            throw "Проверка установки не выдала результаты в течение 10 секунд: $Mode"
         }
 
         if ($probeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            throw "设置探针执行失败：$Mode"
+            throw "Не удалось выполнить проверку установки: $Mode"
         }
 
         return Get-Content -LiteralPath $outputPath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -308,11 +308,11 @@ $json = @{ DpiMode = $dpiMode } | ConvertTo-Json
         if (-not $probeProcess.WaitForExit(10000)) {
             $probeProcess.Kill()
             $probeProcess.WaitForExit()
-            throw '窗口 DPI awareness 反射探针未在 10 秒内结束。'
+            throw 'Проверка отражения определения DPI окна не завершилась в течение 10 секунд.'
         }
 
         if ($probeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            throw '窗口 DPI awareness 反射探针执行失败。'
+            throw 'Не удалось выполнить проверку отражения определения DPI окна.'
         }
 
         return Get-Content -LiteralPath $outputPath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -442,10 +442,10 @@ $result = @{
         if (-not $probeProcess.WaitForExit(10000)) {
             $probeProcess.Kill()
             $probeProcess.WaitForExit()
-            throw '已知 Codex 目标刷新反射探针未在 10 秒内结束。'
+            throw 'Проверка обновления известного окна Codex не завершилась за 10 секунд.'
         }
         if ($probeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            throw '已知 Codex 目标刷新反射探针执行失败。'
+            throw 'Ошибка при проверке обновления известного окна Codex.'
         }
         return Get-Content -LiteralPath $outputPath -Encoding UTF8 -Raw | ConvertFrom-Json
     }
@@ -653,10 +653,10 @@ catch {
         if (-not $probeProcess.WaitForExit(10000)) {
             $probeProcess.Kill()
             $probeProcess.WaitForExit()
-            throw '主窗口表面契约反射探针未在 10 秒内结束。'
+            throw 'Проверка области главного окна не завершилась за 10 секунд.'
         }
         if ($probeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            throw '主窗口表面契约反射探针执行失败。'
+            throw 'Ошибка при проверке области главного окна.'
         }
         Get-Content -LiteralPath $outputPath -Encoding UTF8 -Raw | ConvertFrom-Json
     }
@@ -1048,10 +1048,10 @@ $result = @{
         if (-not $probeProcess.WaitForExit(10000)) {
             $probeProcess.Kill()
             $probeProcess.WaitForExit()
-            throw '手动吸附协调器反射探针未在 10 秒内结束。'
+            throw 'Проверка ручной привязки окна не завершилась за 10 секунд.'
         }
         if ($probeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            throw '手动吸附协调器反射探针执行失败。'
+            throw 'Ошибка при проверке ручной привязки окна.'
         }
         return Get-Content -LiteralPath $outputPath -Encoding UTF8 -Raw | ConvertFrom-Json
     }
@@ -1128,10 +1128,10 @@ $result = @{
         if (-not $probeProcess.WaitForExit(10000)) {
             $probeProcess.Kill()
             $probeProcess.WaitForExit()
-            throw '锚点身份反射探针未在 10 秒内结束。'
+            throw 'Проверка идентификатора окна привязки не завершилась за 10 секунд.'
         }
         if ($probeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            throw '锚点身份反射探针执行失败。'
+            throw 'Ошибка при проверке идентификатора окна привязки.'
         }
         return Get-Content -LiteralPath $outputPath -Encoding UTF8 -Raw | ConvertFrom-Json
     }
@@ -1155,7 +1155,7 @@ try {
 
     & $DotnetPath build $projectPath -c Release --nologo "-p:TargetFramework=$TargetFramework"
     if ($LASTEXITCODE -ne 0) {
-        throw '项目构建失败。'
+        throw 'Не удалось собрать проект.'
     }
 
     if ($areas -contains 'Theme') {
@@ -1165,7 +1165,7 @@ try {
         $paletteType = $assembly.GetType('CodexTokenOverlay.OverlayThemePalette', $false)
         Assert-Condition `
             ($null -ne $kindType -and $null -ne $sourceType -and $null -ne $paletteType) `
-            '主题枚举、调色板与 Windows 值解析契约必须存在。'
+            'Должны существовать контракты перечисления тем, палитры и разрешения значений Windows.'
 
         $staticFlags = [System.Reflection.BindingFlags]'Public, NonPublic, Static'
         $resolveKind = $sourceType.GetMethod('ResolveKind', $staticFlags)
@@ -1173,7 +1173,7 @@ try {
         $paletteFor = $paletteType.GetMethod('For', $staticFlags)
         Assert-Condition `
             ($null -ne $resolveKind -and $null -ne $readKind -and $null -ne $paletteFor) `
-            '主题纯逻辑入口必须可用。'
+            'Должна быть доступна чисто логическая запись темы.'
 
         function Invoke-ResolveThemeKind([object]$Value) {
             $arguments = [object[]]::new(1)
@@ -1181,11 +1181,11 @@ try {
             return $resolveKind.Invoke($null, $arguments).ToString()
         }
 
-        Assert-Condition ((Invoke-ResolveThemeKind 0) -eq 'Dark') 'AppsUseLightTheme=0 必须解析为 Dark。'
-        Assert-Condition ((Invoke-ResolveThemeKind 1) -eq 'Light') 'AppsUseLightTheme=1 必须解析为 Light。'
-        Assert-Condition ((Invoke-ResolveThemeKind 2) -eq 'Light') '非零 DWORD 必须解析为 Light。'
-        Assert-Condition ((Invoke-ResolveThemeKind $null) -eq 'Dark') '缺失注册表值必须回退 Dark。'
-        Assert-Condition ((Invoke-ResolveThemeKind '1') -eq 'Dark') '非数值注册表值必须回退 Dark。'
+        Assert-Condition ((Invoke-ResolveThemeKind 0) -eq 'Dark') 'При AppsUseLightTheme=0 ожидается тёмная тема.'
+        Assert-Condition ((Invoke-ResolveThemeKind 1) -eq 'Light') 'При AppsUseLightTheme=1 ожидается светлая тема.'
+        Assert-Condition ((Invoke-ResolveThemeKind 2) -eq 'Light') 'При ненулевом DWORD ожидается светлая тема.'
+        Assert-Condition ((Invoke-ResolveThemeKind $null) -eq 'Dark') 'Отсутствующий параметр реестра необходимо откатить до темного.'
+        Assert-Condition ((Invoke-ResolveThemeKind '1') -eq 'Dark') 'Нечисловые значения реестра должны вернуться к Dark.'
 
         $throwingRead = [Func[object]] {
             throw [UnauthorizedAccessException]::new('denied')
@@ -1193,7 +1193,7 @@ try {
         $readArguments = [object[]]::new(1)
         $readArguments[0] = $throwingRead
         $fallbackKind = $readKind.Invoke($null, $readArguments).ToString()
-        Assert-Condition ($fallbackKind -eq 'Dark') '注册表读取异常必须回退 Dark。'
+        Assert-Condition ($fallbackKind -eq 'Dark') 'Исключение чтения реестра необходимо вернуть в Dark.'
 
         $darkKind = [Enum]::Parse($kindType, 'Dark')
         $lightKind = [Enum]::Parse($kindType, 'Light')
@@ -1228,42 +1228,42 @@ try {
             $property = $propertyNames[$index]
             $darkArgb = $dark.$property.ToArgb()
             $lightArgb = $light.$property.ToArgb()
-            Assert-Condition ($darkArgb -eq $expectedDark[$index].ToArgb()) "Dark $property 颜色不正确。actual=$darkArgb"
-            Assert-Condition ($lightArgb -eq $expectedLight[$index].ToArgb()) "Light $property 颜色不正确。actual=$lightArgb"
-            Assert-Condition ($dark.$property -ne [Drawing.Color]::Fuchsia) "Dark $property 不得使用透明键色。"
-            Assert-Condition ($light.$property -ne [Drawing.Color]::Fuchsia) "Light $property 不得使用透明键色。"
+            Assert-Condition ($darkArgb -eq $expectedDark[$index].ToArgb()) "Неправильный темный цвет $property. фактическое=$darkArgb"
+            Assert-Condition ($lightArgb -eq $expectedLight[$index].ToArgb()) "Цвет освещения $property неправильный. фактическое=$lightArgb"
+            Assert-Condition ($dark.$property -ne [Drawing.Color]::Fuchsia) "В тёмной теме цвет $property совпал с ключевым цветом прозрачности."
+            Assert-Condition ($light.$property -ne [Drawing.Color]::Fuchsia) "В светлой теме цвет $property совпал с ключевым цветом прозрачности."
         }
-        Assert-Condition ($dark.Background -ne $light.Background) '浅深色背景必须不同。'
-        Assert-Condition ($dark.Value -ne $light.Value) '浅深色数值颜色必须不同。'
+        Assert-Condition ($dark.Background -ne $light.Background) 'Светлый и темный фоны должны быть разными.'
+        Assert-Condition ($dark.Value -ne $light.Value) 'Числовые цвета светлого и темного цвета должны различаться.'
 
         $sourceContract = $assembly.GetType('CodexTokenOverlay.IOverlayThemeSource', $false)
         $bindingType = $assembly.GetType('CodexTokenOverlay.OverlayThemeBinding', $false)
         Assert-Condition `
             ($null -ne $sourceContract -and $null -ne $bindingType) `
-            '主题源与 UI 绑定契约必须存在。'
+            'Должен существовать исходный код темы и контракт привязки пользовательского интерфейса.'
 
         $themeResponse = Invoke-JsonProbe '--theme-probe' @()
         $theme = Get-ProbeCase $themeResponse 'theme-lifecycle'
-        Assert-Condition $theme.Supported '主题生命周期探针必须运行真实 source/binding。'
-        Assert-Condition $theme.SourceInitialDark 'Windows 主题源必须初始应用 Dark。'
-        Assert-Condition $theme.SourceChangedOnce '主题类型变化必须恰好通知一次。'
-        Assert-Condition $theme.SourceSameKindIgnored '相同主题类型不得重复通知。'
-        Assert-Condition $theme.SourceUnsubscribedOnce '释放 Windows 主题源必须恰好解除一次静态订阅。'
-        Assert-Condition $theme.SourceDisposeIdempotent '重复释放 Windows 主题源必须幂等。'
-        Assert-Condition $theme.SourcePostDisposeIgnored '释放后的 Windows 主题事件必须安全忽略。'
-        Assert-Condition $theme.BindingInitialDark '绑定必须在 UI 线程初始应用 Dark。'
-        Assert-Condition $theme.BindingBackgroundLightOnUiThread '后台主题更新必须在 UI 线程应用 Light。'
-        Assert-Condition $theme.BindingSameKindIgnored '绑定必须合并相同主题的重复事件。'
-        Assert-Condition $theme.BindingQueuedCallbackCancelledOnDispose '释放后已排队的 UI 回调必须失效。'
-        Assert-Condition $theme.BindingUnsubscribedBeforeSourceDispose '绑定必须先解除事件再释放主题源。'
-        Assert-Condition $theme.FormsSupported '两个窗体必须支持 ApplyTheme。'
-        Assert-Condition $theme.FormsInitialDark '两个隐藏窗体必须初始应用 Dark。'
-        Assert-Condition $theme.FormsBackgroundLightOnUiThread '后台变更必须在 UI 线程向两个窗体应用 Light。'
-        Assert-Condition $theme.FormsStateUnchanged '主题变更不得改变边界、布局、展示数据、编辑态或可见性。'
-        Assert-Condition $theme.FormsSameKindIgnored '相同主题事件不得产生第二次窗体绘制状态转换。'
-        Assert-Condition $theme.FormsSurviveTokenHandleRecreation '编辑态句柄重建前后的后台主题变更必须仍应用。'
-        Assert-Condition $theme.FormsPostDisposeIgnored '绑定释放后的主题事件不得改变窗体。'
-        Assert-Condition $theme.NoBackgroundException '后台主题事件、句柄竞争和释放不得逃逸异常。'
+        Assert-Condition $theme.Supported 'При проверке жизненного цикла темы необходимо использовать реальный источник/привязку.'
+        Assert-Condition $theme.SourceInitialDark 'В источниках тем Windows изначально должен быть применен Dark.'
+        Assert-Condition $theme.SourceChangedOnce 'Об изменении типа темы необходимо уведомлять ровно один раз.'
+        Assert-Condition $theme.SourceSameKindIgnored 'Дублирование уведомлений одного и того же типа темы не допускается.'
+        Assert-Condition $theme.SourceUnsubscribedOnce 'При выпуске источника темы Windows необходимо отменить подписку на статическую подписку ровно один раз.'
+        Assert-Condition $theme.SourceDisposeIdempotent 'Повторные выпуски исходных кодов тем Windows должны быть идемпотентными.'
+        Assert-Condition $theme.SourcePostDisposeIgnored 'События темы Windows после выпуска необходимо игнорировать.'
+        Assert-Condition $theme.BindingInitialDark 'Привязки должны быть изначально применены к Dark в потоке пользовательского интерфейса.'
+        Assert-Condition $theme.BindingBackgroundLightOnUiThread 'Обновления фоновой темы должны применять Light к потоку пользовательского интерфейса.'
+        Assert-Condition $theme.BindingSameKindIgnored 'Привязки должны объединять повторяющиеся события для одной темы.'
+        Assert-Condition $theme.BindingQueuedCallbackCancelledOnDispose 'Обратные вызовы пользовательского интерфейса в очереди должны быть признаны недействительными после выпуска.'
+        Assert-Condition $theme.BindingUnsubscribedBeforeSourceDispose 'Привязка должна сначала освободить событие, а затем освободить источник темы.'
+        Assert-Condition $theme.FormsSupported 'Обе формы должны поддерживать ApplyTheme.'
+        Assert-Condition $theme.FormsInitialDark 'К двум скрытым формам изначально должен быть применен Dark.'
+        Assert-Condition $theme.FormsBackgroundLightOnUiThread 'Изменения фона должны применять Light к обеим формам в потоке пользовательского интерфейса.'
+        Assert-Condition $theme.FormsStateUnchanged 'Изменения темы не должны изменять границы, макет, отображаемые данные, статус редактирования или видимость.'
+        Assert-Condition $theme.FormsSameKindIgnored 'Одно и то же событие темы не должно генерировать второй переход состояния рисования формы.'
+        Assert-Condition $theme.FormsSurviveTokenHandleRecreation 'Изменения фоновой темы до и после перестроения дескриптора состояния редактирования по-прежнему должны применяться.'
+        Assert-Condition $theme.FormsPostDisposeIgnored 'События темы после освобождения привязки не должны менять форму.'
+        Assert-Condition $theme.NoBackgroundException 'События фоновой темы, обработка конкуренции и выпуск не должны исключать исключений.'
 
         $instanceFlags = [System.Reflection.BindingFlags]'Public, NonPublic, Instance'
         $contextType = $assembly.GetType('CodexTokenOverlay.OverlayContext', $true)
@@ -1271,13 +1271,13 @@ try {
         $contextThemeApply = $contextType.GetMethod('ApplyTheme', $instanceFlags)
         Assert-Condition `
             ($null -ne $themeBindingField -and $themeBindingField.FieldType -eq $bindingType -and $null -ne $contextThemeApply) `
-            'OverlayContext 必须持有唯一主题 binding 并提供双窗体应用回调。'
+            'OverlayContext должен содержать уникальную привязку темы и обеспечивать обратные вызовы приложения двойной формы.'
 
         $formApplyTheme = $assembly.GetType('CodexTokenOverlay.TokenStripForm', $true).GetMethod('ApplyTheme', $instanceFlags)
         $highlightApplyTheme = $assembly.GetType('CodexTokenOverlay.AttachmentTargetHighlightForm', $true).GetMethod('ApplyTheme', $instanceFlags)
         Assert-Condition `
             (Test-MethodCallChain $contextThemeApply @($formApplyTheme, $highlightApplyTheme) 6) `
-            'OverlayContext 主题回调必须向主窗体和高亮窗体应用同一调色板。'
+            'Обратный вызов темы OverlayContext должен применять одну и ту же цветовую палитру к основной форме и выделенной форме.'
 
         $contextConstructor = @($contextType.GetConstructors($instanceFlags) | Where-Object {
             $_.GetParameters().Count -eq 2
@@ -1300,7 +1300,7 @@ try {
         }
         Assert-Condition `
             ($handleGetterIndex -ge 0 -and $bindingConstructorIndex -gt $handleGetterIndex) `
-            'OverlayContext 必须先创建稳定高亮 dispatcher 句柄，再构造主题 binding。'
+            'OverlayContext должен сначала создать стабильный дескриптор диспетчера выделения, а затем создать привязку темы.'
 
         $contextDispose = $contextType.GetMethod('DisposeThemeAndForms', $instanceFlags)
         $disposeCalls = @(
@@ -1318,7 +1318,7 @@ try {
         }
         Assert-Condition `
             ($themeDisposeIndex -ge 0 -and $formDisposeIndexes.Count -eq 2 -and @($formDisposeIndexes | Where-Object { $_ -gt $themeDisposeIndex }).Count -eq 2) `
-            'OverlayContext 必须在两个窗体之前释放主题 binding。'
+            'OverlayContext должен освободить привязку темы перед обеими формами.'
     }
 
     if ($areas -contains 'Attachment') {
@@ -1334,11 +1334,11 @@ try {
             foreach ($propertyName in @(
                 'AttachmentTargetKind', 'ActiveTarget')) {
                 Assert-Condition ($null -eq $contract.GetProperty($propertyName)) `
-                    "$contractName 不得公开 $propertyName。"
+                    "$contractName $propertyName не должен публиковаться."
             }
         }
         Assert-Condition ($null -eq $assembly.GetType('CodexTokenOverlay.AttachmentTargetKind', $false)) `
-            '主窗口契约不得保留 AttachmentTargetKind 类型。'
+            'Контракт главного окна не должен сохранять тип AttachmentTargetKind.'
         $response = Invoke-JsonProbe '--attachment-probe' @(
             @{ Name = 'reference-points'; Operation = 'ReferencePoints'; Target = $target; Dpi = 96 },
             @{ Name = 'center-tie'; Operation = 'SelectReferencePoint'; Target = $target; Center = @{ X = 500; Y = 500 } },
@@ -1401,45 +1401,45 @@ try {
             @{ Kind = 6; X = 500; Y = 800 },
             @{ Kind = 7; X = 900; Y = 800 }
         )
-        Assert-Condition ($referencePoints.Count -eq $expectedReferencePoints.Count) '手动吸附必须暴露恰好八个参考点。'
+        Assert-Condition ($referencePoints.Count -eq $expectedReferencePoints.Count) 'Ручная привязка должна выявить ровно восемь контрольных точек.'
         for ($index = 0; $index -lt $expectedReferencePoints.Count; $index++) {
             $actual = $referencePoints[$index]
             $expected = $expectedReferencePoints[$index]
             Assert-Condition `
                 ($actual.Kind -eq $expected.Kind -and $actual.Point.X -eq $expected.X -and $actual.Point.Y -eq $expected.Y) `
-                "第 $index 个手动吸附参考点不正确。"
+                "Неверная контрольная точка ручной привязки $indexth."
         }
         $referenceCase = Get-ProbeCase $response 'reference-points'
-        Assert-Condition $referenceCase.RejectsEmptyTarget '纯吸附 API 必须拒绝空目标矩形。'
-        Assert-Condition $referenceCase.RejectsZeroDpi '纯吸附 API 必须拒绝零 DPI。'
+        Assert-Condition $referenceCase.RejectsEmptyTarget 'API чистой привязки должен отклонять пустые целевые прямоугольники.'
+        Assert-Condition $referenceCase.RejectsZeroDpi 'API привязки должен отклонять нулевой DPI.'
 
-        Assert-Condition ((Get-ProbeCase $response 'center-tie').ReferencePoint -eq 1) '中心并列必须按枚举顺序选择 TopCenter。'
-        Assert-Condition ((Get-ProbeCase $response 'near-top-right').ReferencePoint -eq 2) '右上附近必须选择 TopRight。'
+        Assert-Condition ((Get-ProbeCase $response 'center-tie').ReferencePoint -eq 1) 'Центральная связь должна выбирать TopCenter в порядке перечисления.'
+        Assert-Condition ((Get-ProbeCase $response 'near-top-right').ReferencePoint -eq 2) 'Необходимо выбрать TopRight в правом верхнем углу.'
 
         $roundtrip = Get-ProbeCase $response 'dpi-capture-roundtrip'
-        Assert-Condition ($roundtrip.Attachment.ReferencePoint -eq 2) '144 DPI 捕获必须选择 TopRight。'
-        Assert-Condition ([Math]::Abs($roundtrip.Attachment.OffsetXDip - (-30)) -lt 0.000001) '144 DPI 捕获 X 偏移必须为 -30 DIP。'
-        Assert-Condition ([Math]::Abs($roundtrip.Attachment.OffsetYDip - 30) -lt 0.000001) '144 DPI 捕获 Y 偏移必须为 30 DIP。'
-        Assert-Condition ($roundtrip.ResolvedCenter.X -eq 855 -and $roundtrip.ResolvedCenter.Y -eq 245) '144 DPI 捕获必须无损解析回原中心。'
+        Assert-Condition ($roundtrip.Attachment.ReferencePoint -eq 2) 'Для захвата с разрешением 144 DPI необходимо выбрать TopRight.'
+        Assert-Condition ([Math]::Abs($roundtrip.Attachment.OffsetXDip - (-30)) -lt 0.000001) 'Смещение X захвата 144 DPI должно быть -30 DIP.'
+        Assert-Condition ([Math]::Abs($roundtrip.Attachment.OffsetYDip - 30) -lt 0.000001) 'Смещение по оси Y при захвате 144 DPI должно составлять 30 DIP.'
+        Assert-Condition ($roundtrip.ResolvedCenter.X -eq 855 -and $roundtrip.ResolvedCenter.Y -eq 245) 'Захват с разрешением 144 DPI должен без потерь анализироваться обратно в исходный центр.'
 
         $hits = @(Get-ProbeCase $response 'target-hit-testing').Hits
-        Assert-Condition ($hits.Count -eq 3) '目标命中探针必须返回三个结果。'
-        Assert-Condition ($hits[0].Handle -eq 100 -and $hits[0].Bounds.X -eq 100 -and $hits[0].Bounds.Y -eq 200) '主窗口表面命中必须捕获主窗口。'
-        Assert-Condition ($null -eq $hits[1]) 'hostSurfaceHit=false 时即使在主窗口矩形内也不得捕获。'
-        Assert-Condition ($null -eq $hits[2]) '无关位置不得命中任意吸附目标。'
+        Assert-Condition ($hits.Count -eq 3) 'Проверка попадания в цель должна вернуть три результата.'
+        Assert-Condition ($hits[0].Handle -eq 100 -and $hits[0].Bounds.X -eq 100 -and $hits[0].Bounds.Y -eq 200) 'Обращение к поверхности главного окна должно захватывать главное окно.'
+        Assert-Condition ($null -eq $hits[1]) 'Захват невозможен даже внутри прямоугольника главного окна, если hostSurfaceHit=false.'
+        Assert-Condition ($null -eq $hits[2]) 'Нерелевантные позиции не должны попадать ни на одну цель привязки.'
 
         $scales = @(Get-ProbeCase $response 'scale-calculation').Scales
-        Assert-Condition (($scales -join ',') -eq '60,130,73,130') '缩放计算必须按 60–130 边界并在无效起始尺寸时返回清理后的起始比例。'
+        Assert-Condition (($scales -join ',') -eq '60,130,73,130') 'Расчеты масштабирования должны производиться на 60–130 границах и возвращаться к очищенному начальному масштабу при недопустимом начальном размере.'
 
         $edit = Get-ProbeCase $response 'edit-state'
-        Assert-Condition $edit.ThrowsBeforeBegin '编辑状态在 Begin 前必须拒绝 Apply/Commit/Cancel。'
-        Assert-Condition (-not $edit.ActiveAfterCommit) 'Commit 后编辑状态必须失活。'
-        Assert-Condition ($edit.Committed.Enabled -and $edit.Committed.ScalePercent -eq 73) 'Commit 必须返回当前草稿缩放。'
-        Assert-Condition ($edit.Committed.MainAttachment.ReferencePoint -eq 2 -and $edit.Committed.MainAttachment.OffsetXDip -eq -30 -and $edit.Committed.MainAttachment.OffsetYDip -eq 40) 'Commit 必须返回主窗口草稿附件。'
-        Assert-Condition (-not $edit.ActiveAfterCancel) 'Cancel 后编辑状态必须失活。'
+        Assert-Condition $edit.ThrowsBeforeBegin 'Статус редактирования должен отклонять применение/фиксацию/отмену до начала.'
+        Assert-Condition (-not $edit.ActiveAfterCommit) 'Статус редактирования должен быть деактивирован после фиксации.'
+        Assert-Condition ($edit.Committed.Enabled -and $edit.Committed.ScalePercent -eq 73) 'Commit должен возвращать текущий масштаб уклона.'
+        Assert-Condition ($edit.Committed.MainAttachment.ReferencePoint -eq 2 -and $edit.Committed.MainAttachment.OffsetXDip -eq -30 -and $edit.Committed.MainAttachment.OffsetYDip -eq 40) 'Commit должен возвращать вложение черновика главного окна.'
+        Assert-Condition (-not $edit.ActiveAfterCancel) 'После отмены статус редактирования должен быть деактивирован.'
         $cancelledJson = $edit.Cancelled | ConvertTo-Json -Compress -Depth 8
         $cancelOriginalJson = $edit.CancelOriginal | ConvertTo-Json -Compress -Depth 8
-        Assert-Condition ($cancelledJson -eq $cancelOriginalJson) 'Cancel 必须完整恢复不可变的原始快照。'
+        Assert-Condition ($cancelledJson -eq $cancelOriginalJson) 'Отмена Исходный неизменяемый снимок должен быть полностью восстановлен.'
 
         $coordinator = Invoke-ManualCoordinatorReflectionProbe
 
@@ -1458,49 +1458,49 @@ try {
             ($coordinator.TrueResolverPoints[0].Y -eq 250)
         Assert-Condition `
             ($coordinator.HasMoveDispatcher -and $coordinator.PreviewHandlerUsesDispatcher -and $coordinator.CompletionHandlerUsesDispatcher -and $dispatcherBehaviorIsNativeSeamDriven) `
-            "Context 的 preview/completion handler 必须共同调用可注入 surface resolver 的 production dispatcher，并逐字传递 false/true。actual=$($coordinator | ConvertTo-Json -Compress -Depth 12)"
+            "Оба обработчика перемещения должны вызывать общий диспетчер. Для предпросмотра ожидается false, для завершения — true. actual=$($coordinator | ConvertTo-Json -Compress -Depth 12)"
         Assert-Condition `
             ($coordinator.PreviewResolverCallsNative -and $coordinator.CompletionResolverCallsNative -and ($coordinator.PreviewIsCompletionFlag -eq $false) -and ($coordinator.CompletionIsCompletionFlag -eq $true)) `
-            "两个 concrete handler 创建的 delegate 必须分别调用 native IsCursorOnKnownHost，且 dispatcher 调用前必须装载 preview=false/completion=true。actual=$($coordinator | ConvertTo-Json -Compress -Depth 12)"
+            "Оба обработчика должны вызывать IsCursorOnKnownHost. Флаг завершения должен быть false для предпросмотра и true для завершения. actual=$($coordinator | ConvertTo-Json -Compress -Depth 12)"
 
         $saveEvents = @($coordinator.SaveMainBottomRightAndResize)
         $saved = $saveEvents[3]
-        Assert-Condition (-not $saved.IsEditing) '保存后协调器必须退出编辑态。'
-        Assert-Condition ($saved.Draft.Enabled -and $saved.Draft.ScalePercent -eq 73) '保存必须启用手动主窗口目标并保留 73% 缩放。'
-        Assert-Condition ($saved.Draft.MainAttachment.ReferencePoint -eq 7) '右下移动和缩放后必须保存 BottomRight 参考点。'
+        Assert-Condition (-not $saved.IsEditing) 'После сохранения координатор должен выйти из состояния редактирования.'
+        Assert-Condition ($saved.Draft.Enabled -and $saved.Draft.ScalePercent -eq 73) 'При сохранении необходимо включить настройку главного окна вручную и сохранить масштаб 73%.'
+        Assert-Condition ($saved.Draft.MainAttachment.ReferencePoint -eq 7) 'Опорную точку BottomRight необходимо сохранить после перемещения нижнего правого угла и масштабирования.'
         $resize = $saveEvents[2]
-        Assert-Condition $resize.ShouldCollapse '进入缩放预览必须请求保持收起。'
-        Assert-Condition ($resize.ResolvedCenter.X -eq 821 -and $resize.ResolvedCenter.Y -eq 712) '73% 缩放必须由固定左上角推导新胶囊中心。'
+        Assert-Condition $resize.ShouldCollapse 'Чтобы войти в предварительный просмотр в масштабе, вы должны запросить сохранение его в свернутом виде.'
+        Assert-Condition ($resize.ResolvedCenter.X -eq 834 -and $resize.ResolvedCenter.Y -eq 712) 'Масштабирование 73% должно определять центр новой капсулы из фиксированного верхнего левого угла.'
 
         $cancelEvents = @($coordinator.CancelRestoresDisabledOriginal)
         $cancelled = $cancelEvents[2].Draft
-        Assert-Condition (-not $cancelEvents[2].IsEditing -and -not $cancelled.Enabled) '取消必须退出编辑并恢复原始禁用标志。'
-        Assert-Condition ($cancelled.ScalePercent -eq 91) '取消必须恢复原始缩放。'
-        Assert-Condition ($cancelled.MainAttachment.ReferencePoint -eq 4 -and $cancelled.MainAttachment.OffsetXDip -eq -15 -and $cancelled.MainAttachment.OffsetYDip -eq 7) '取消必须完整恢复主窗口附件。'
+        Assert-Condition (-not $cancelEvents[2].IsEditing -and -not $cancelled.Enabled) 'При отмене необходимо выйти из редактирования и восстановить исходный отключенный флаг.'
+        Assert-Condition ($cancelled.ScalePercent -eq 91) 'Отмена должна восстановить исходное масштабирование.'
+        Assert-Condition ($cancelled.MainAttachment.ReferencePoint -eq 4 -and $cancelled.MainAttachment.OffsetXDip -eq -15 -and $cancelled.MainAttachment.OffsetYDip -eq 7) 'Отмена должна полностью восстановить вложение в главном окне.'
 
         $blankEvents = @($coordinator.BlankMoveKeepsLastValidDraft)
-        Assert-Condition (-not $blankEvents[2].CanSave) '无关空白位置必须让当前手势不可保存。'
-        Assert-Condition (($blankEvents[1].Draft | ConvertTo-Json -Compress -Depth 8) -eq ($blankEvents[2].Draft | ConvertTo-Json -Compress -Depth 8)) '无关空白位置不得覆盖最后一个有效草稿。'
-        Assert-Condition ($blankEvents[2].ResolvedCenter.X -eq 840 -and $blankEvents[2].ResolvedCenter.Y -eq 740) '无效 Move 完成必须立即返回最后有效草稿中心，而不是保留桌面自由拖动位置。'
+        Assert-Condition (-not $blankEvents[2].CanSave) 'Нерелевантные пустые позиции должны привести к невозможности сохранения текущего жеста.'
+        Assert-Condition (($blankEvents[1].Draft | ConvertTo-Json -Compress -Depth 8) -eq ($blankEvents[2].Draft | ConvertTo-Json -Compress -Depth 8)) 'Ненужное пустое пространство не должно закрывать последний действительный черновик.'
+        Assert-Condition ($blankEvents[2].ResolvedCenter.X -eq 840 -and $blankEvents[2].ResolvedCenter.Y -eq 740) 'Завершение недопустимого перемещения должно немедленно вернуться к последнему допустимому центру уклона вместо сохранения положения свободного перетаскивания на рабочем столе.'
 
         $validMovePreview = $coordinator.ValidMovePreview
-        Assert-Condition ($validMovePreview.CanSave -and $validMovePreview.ResolvedCenter.X -eq 700 -and $validMovePreview.ResolvedCenter.Y -eq 650) '有效 Move 预览必须继续使用自由拖拽中心。'
-        Assert-Rect $validMovePreview.HighlightBounds 100 200 800 600 '有效 Move 预览必须显示主窗口目标 ring。'
+        Assert-Condition ($validMovePreview.CanSave -and $validMovePreview.ResolvedCenter.X -eq 700 -and $validMovePreview.ResolvedCenter.Y -eq 650) 'При предварительном просмотре действительных перемещений по-прежнему должно использоваться свободное центрирование при перетаскивании.'
+        Assert-Rect $validMovePreview.HighlightBounds 100 200 800 600 'При правильном предварительном просмотре перемещения должно отображаться целевое кольцо главного окна.'
         $invalidMovePreview = $coordinator.InvalidMovePreview
-        Assert-Condition $invalidMovePreview.IsEditing '无效 Move 预览不得结束手势编辑态。'
-        Assert-Condition (-not $invalidMovePreview.CanSave) 'hostSurfaceHit=false 的 Move 预览必须立即不可保存。'
-        Assert-Condition ($null -eq $invalidMovePreview.HighlightBounds) 'hostSurfaceHit=false 的 Move 预览不得保留目标 ring。'
-        Assert-Condition (($invalidMovePreview.Draft | ConvertTo-Json -Compress -Depth 8) -eq $coordinator.DraftBeforeInvalidPreview) '无效 Move 预览不得覆盖最后有效草稿。'
-        Assert-Condition ($invalidMovePreview.ResolvedCenter.X -eq 840 -and $invalidMovePreview.ResolvedCenter.Y -eq 740) '无效 Move 预览必须同步返回最后有效草稿中心。'
-        Assert-Condition $coordinator.GesturePreviewStillActive '无效 Move 预览不得结束活动 gesture preview。'
-        Assert-Condition $coordinator.HasPreviewLayoutPolicy 'Context 必须暴露可观察的 move preview 布局决策 seam。'
-        Assert-Condition (-not $coordinator.ValidPreviewAppliesLayout) '有效 Move 预览必须保持自由跟手且不得应用布局。'
-        Assert-Condition $coordinator.InvalidPreviewAppliesLayout '无效 Move 预览必须在同一事件应用最后有效布局。'
+        Assert-Condition $invalidMovePreview.IsEditing 'Недопустимый предварительный просмотр перемещения не должен заканчивать состояние редактирования жеста.'
+        Assert-Condition (-not $invalidMovePreview.CanSave) 'Предварительный просмотр перемещения с параметром hostSurfaceHit=false должен быть немедленно отменен.'
+        Assert-Condition ($null -eq $invalidMovePreview.HighlightBounds) 'Предварительный просмотр перемещения с параметром hostSurfaceHit=false не должен сохранять целевое кольцо.'
+        Assert-Condition (($invalidMovePreview.Draft | ConvertTo-Json -Compress -Depth 8) -eq $coordinator.DraftBeforeInvalidPreview) 'Предварительный просмотр «Недопустимый ход» не должен перезаписывать последний действительный черновик.'
+        Assert-Condition ($invalidMovePreview.ResolvedCenter.X -eq 840 -and $invalidMovePreview.ResolvedCenter.Y -eq 740) 'Предварительный просмотр недопустимого перемещения должен синхронно возвращаться к последнему допустимому центру драфта.'
+        Assert-Condition $coordinator.GesturePreviewStillActive 'Недопустимый предварительный просмотр перемещения не должен заканчивать предварительный просмотр жеста действия.'
+        Assert-Condition $coordinator.HasPreviewLayoutPolicy 'Контекст должен предоставлять видимый шов решения макета предварительного просмотра перемещения.'
+        Assert-Condition (-not $coordinator.ValidPreviewAppliesLayout) 'Действительные предварительные просмотры Move должны оставаться бесплатными, а макеты нельзя применять.'
+        Assert-Condition $coordinator.InvalidPreviewAppliesLayout 'Предварительный просмотр недопустимого перемещения должен применять последний допустимый макет в том же событии.'
 
-        Assert-Condition ($coordinator.RefreshBeforeGesture.Apply -and $coordinator.RefreshBeforeGesture.Highlight) '静态编辑草稿初始必须允许 Tick 跟随并显示有效目标 ring。'
-        Assert-Condition (-not $coordinator.RefreshDuringGesture.Apply -and -not $coordinator.RefreshDuringGesture.Highlight) '活动 move/resize preview 期间 Tick 不得覆盖预览或恢复 ring。'
-        Assert-Condition ($coordinator.RefreshAfterGesture.Apply -and $coordinator.RefreshAfterGesture.Highlight) '手势完成后有效草稿必须恢复静态窗口跟随。'
-        Assert-Condition ($coordinator.RefreshAfterInvalidMove.Apply -and -not $coordinator.RefreshAfterInvalidMove.Highlight) 'CanSave=false 时 Tick 可恢复草稿位置但不得恢复目标 ring。'
+        Assert-Condition ($coordinator.RefreshBeforeGesture.Apply -and $coordinator.RefreshBeforeGesture.Highlight) 'Черновики статического редактирования изначально должны разрешать отслеживание меток и отображать действительные целевые кольца.'
+        Assert-Condition (-not $coordinator.RefreshDuringGesture.Apply -and -not $coordinator.RefreshDuringGesture.Highlight) 'Галочка не должна перезаписывать предварительный просмотр или восстанавливать кольцо во время активного предварительного просмотра перемещения/изменения размера.'
+        Assert-Condition ($coordinator.RefreshAfterGesture.Apply -and $coordinator.RefreshAfterGesture.Highlight) 'Действительные черновики должны возобновлять статическое окно после завершения жеста.'
+        Assert-Condition ($coordinator.RefreshAfterInvalidMove.Apply -and -not $coordinator.RefreshAfterInvalidMove.Highlight) 'Если CanSave=false, Tick может восстановить положение уклона, но не может восстановить целевое кольцо.'
     }
 
     if ($areas -contains 'Settings') {
@@ -1623,142 +1623,142 @@ try {
         )
 
         $migrated = Get-ProbeCase $response 'migrate-real-old-settings'
-        Assert-Condition ($migrated.Settings.SettingsVersion -eq 1) '旧设置未迁移到版本 1。'
-        Assert-Condition ($migrated.Settings.AnchorMode -eq 3) '旧设置迁移后未切换到标题栏右上。'
-        Assert-Condition ($migrated.Settings.VisibleFields -eq 511) '旧设置迁移后未保留可见字段。'
-        Assert-Condition ($migrated.Settings.CollapsedPrimaryField -eq 1) '旧设置迁移后左侧指标不正确。'
-        Assert-Condition ($migrated.Settings.CollapsedSecondaryField -eq 1024) '旧设置迁移后右侧指标不正确。'
-        Assert-Condition ($migrated.MustPersist -eq $true) '旧设置迁移后必须立即持久化。'
+        Assert-Condition ($migrated.Settings.SettingsVersion -eq 1) 'Старые настройки не переносятся в версию 1.'
+        Assert-Condition ($migrated.Settings.AnchorMode -eq 3) 'Старые настройки не переносятся в верхний правый угол строки заголовка после миграции.'
+        Assert-Condition ($migrated.Settings.VisibleFields -eq 511) 'Видимые поля не сохраняются после переноса старых настроек.'
+        Assert-Condition ($migrated.Settings.CollapsedPrimaryField -eq 1) 'После переноса старых настроек левый индикатор отображается неправильно.'
+        Assert-Condition ($migrated.Settings.CollapsedSecondaryField -eq 1024) 'После переноса старых настроек индикатор справа отображается неправильно.'
+        Assert-Condition ($migrated.MustPersist -eq $true) 'Старые настройки должны быть сохранены сразу после миграции.'
 
         $currentOldAnchor = Get-ProbeCase $response 'keep-current-old-anchor'
-        Assert-Condition ($currentOldAnchor.Settings.AnchorMode -eq 2) '当前版本错误地覆盖了用户选择的旧吸附模式。'
-        Assert-Condition ($currentOldAnchor.MustPersist -eq $false) '当前版本设置不应触发迁移写入。'
+        Assert-Condition ($currentOldAnchor.Settings.AnchorMode -eq 2) 'Текущая версия неправильно перезаписывает старый режим привязки, выбранный пользователем.'
+        Assert-Condition ($currentOldAnchor.MustPersist -eq $false) 'Настройки текущей версии не должны вызывать запись миграции.'
 
         $traditionalMode = Get-ProbeCase $response 'existing-version-one-keeps-traditional-mode'
-        Assert-Condition ($traditionalMode.Settings.AnchorMode -eq 2) '版本 1 设置错误地覆盖了传统吸附模式。'
-        Assert-Condition ($traditionalMode.Settings.ManualPlacementEnabled -eq $false) '缺少手动放置字段的版本 1 设置必须保持传统模式。'
-        Assert-Condition ($traditionalMode.Settings.MainAttachment.ReferencePoint -eq 2) '缺少手动放置字段的版本 1 设置必须默认主窗口右上参考点。'
-        Assert-Condition ($traditionalMode.Settings.MainAttachment.OffsetXDip -eq -344) '缺少手动放置字段的版本 1 设置必须默认主窗口安全水平偏移。'
-        Assert-Condition ($traditionalMode.Settings.MainAttachment.OffsetYDip -eq 24) '缺少手动放置字段的版本 1 设置必须默认主窗口垂直偏移。'
-        Assert-Condition ($traditionalMode.Settings.OverlayScalePercent -eq 100) '缺少手动放置字段的版本 1 设置必须默认 100% 缩放。'
+        Assert-Condition ($traditionalMode.Settings.AnchorMode -eq 2) 'Настройки версии 1 неправильно переопределяют устаревший режим привязки.'
+        Assert-Condition ($traditionalMode.Settings.ManualPlacementEnabled -eq $false) 'В настройках версии 1 отсутствуют поля, добавленные вручную, и они должны оставаться в устаревшем режиме.'
+        Assert-Condition ($traditionalMode.Settings.MainAttachment.ReferencePoint -eq 2) 'В настройках версии 1 отсутствуют поля, размещенные вручную, по умолчанию должна быть установлена верхняя правая контрольная точка главного окна.'
+        Assert-Condition ($traditionalMode.Settings.MainAttachment.OffsetXDip -eq -366) 'В настройках версии 1 отсутствуют поля, размещенные вручную, по умолчанию должно быть установлено безопасное горизонтальное смещение главного окна.'
+        Assert-Condition ($traditionalMode.Settings.MainAttachment.OffsetYDip -eq 24) 'В версии 1 отсутствует настройка полей, размещаемых вручную, по умолчанию должно быть установлено вертикальное смещение главного окна.'
+        Assert-Condition ($traditionalMode.Settings.OverlayScalePercent -eq 100) 'В настройках версии 1 отсутствуют поля, размещенные вручную, по умолчанию должно быть установлено 100% масштабирование.'
 
         $swapped = Get-ProbeCase $response 'swap-duplicate-slot'
-        Assert-Condition ($swapped.Settings.CollapsedPrimaryField -eq 64) '选择右侧指标为左侧指标时未更新左侧。'
-        Assert-Condition ($swapped.Settings.CollapsedSecondaryField -eq 1) '重复选择时未交换原左侧指标。'
+        Assert-Condition ($swapped.Settings.CollapsedPrimaryField -eq 64) 'Левая сторона не обновляется, когда правый индикатор выбран в качестве левого индикатора.'
+        Assert-Condition ($swapped.Settings.CollapsedSecondaryField -eq 1) 'Исходный левый указатель не меняется при повторном выборе.'
 
         $repaired = Get-ProbeCase $response 'repair-unknown-values'
-        Assert-Condition ($repaired.Settings.AnchorMode -eq 3) '未知吸附模式未回退到标题栏右上。'
-        Assert-Condition ($repaired.Settings.VisibleFields -eq 1) '全未知可见字段未回退到总 Token。'
-        Assert-Condition ($repaired.Settings.CollapsedPrimaryField -eq 1) '无效左侧指标未回退到总 Token。'
-        Assert-Condition ($repaired.Settings.CollapsedSecondaryField -eq 64) '无效右侧指标未回退到上下文百分比。'
+        Assert-Condition ($repaired.Settings.AnchorMode -eq 3) 'Неизвестный режим привязки не возвращается в правый верхний угол строки заголовка.'
+        Assert-Condition ($repaired.Settings.VisibleFields -eq 1) 'Все неизвестные видимые поля не возвращаются в общий токен.'
+        Assert-Condition ($repaired.Settings.CollapsedPrimaryField -eq 1) 'Недопустимый индикатор слева не возвращается к общему токену.'
+        Assert-Condition ($repaired.Settings.CollapsedSecondaryField -eq 64) 'Неверный правый индикатор не возвращается к процентному значению контекста.'
 
         $missing = Get-ProbeCase $response 'missing-settings-file'
-        Assert-Condition ($missing.Settings.SettingsVersion -eq 1) '缺少设置文件时未使用当前版本默认值。'
-        Assert-Condition ($missing.Settings.AnchorMode -eq 3) '缺少设置文件时默认吸附模式不正确。'
-        Assert-Condition ($missing.Settings.CollapsedPrimaryField -eq 1) '缺少设置文件时默认左侧指标不正确。'
-        Assert-Condition ($missing.Settings.CollapsedSecondaryField -eq 1024) '缺少设置文件时默认右侧指标不正确。'
-        Assert-Condition ($missing.Settings.ManualPlacementEnabled -eq $true) '缺少设置文件时必须启用默认手动放置。'
-        Assert-Condition ($missing.Settings.MainAttachment.ReferencePoint -eq 2) '缺少设置文件时默认主窗口参考点不正确。'
-        Assert-Condition ($missing.Settings.MainAttachment.OffsetXDip -eq -344 -and $missing.Settings.MainAttachment.OffsetYDip -eq 24) '缺少设置文件时默认主窗口偏移不正确。'
+        Assert-Condition ($missing.Settings.SettingsVersion -eq 1) 'Значение по умолчанию текущей версии не используется, если файл настроек отсутствует.'
+        Assert-Condition ($missing.Settings.AnchorMode -eq 3) 'Режим привязки по умолчанию неверен, если файл настроек отсутствует.'
+        Assert-Condition ($missing.Settings.CollapsedPrimaryField -eq 1) 'Левый индикатор по умолчанию работает неправильно, если файл настроек отсутствует.'
+        Assert-Condition ($missing.Settings.CollapsedSecondaryField -eq 1024) 'Правый индикатор по умолчанию работает неправильно, если файл настроек отсутствует.'
+        Assert-Condition ($missing.Settings.ManualPlacementEnabled -eq $true) 'При отсутствии файла настроек необходимо включить размещение вручную по умолчанию.'
+        Assert-Condition ($missing.Settings.MainAttachment.ReferencePoint -eq 2) 'Базовая точка главного окна по умолчанию неверна, если файл настроек отсутствует.'
+        Assert-Condition ($missing.Settings.MainAttachment.OffsetXDip -eq -366 -and $missing.Settings.MainAttachment.OffsetYDip -eq 24) 'Смещение главного окна по умолчанию неверно, если файл настроек отсутствует.'
         $defaultWindowRight = 900
         $defaultCaptionButtonLeft = 730
         $defaultCaptionSafetyGap = 8
-        $defaultManualCapsuleWidth = 196
+        $defaultManualCapsuleWidth = 232
         $defaultManualCapsuleRight = $defaultWindowRight +
             [int]$missing.Settings.MainAttachment.OffsetXDip +
             $defaultManualCapsuleWidth -
             [int]($defaultManualCapsuleWidth / 2)
         Assert-Condition ($defaultManualCapsuleRight -le ($defaultCaptionButtonLeft - $defaultCaptionSafetyGap)) `
-            "默认手动右上位置覆盖标题栏按钮：capsuleRight=$defaultManualCapsuleRight safeRight=$($defaultCaptionButtonLeft - $defaultCaptionSafetyGap)。"
-        $maximumManualCapsuleWidth = 255
+            "По умолчанию верхняя правая позиция вручную закрывает кнопку строки заголовка: капсулаRight=$defaultManualCapsuleRight SafeRight=$($defaultCaptionButtonLeft - $defaultCaptionSafetyGap)."
+        $maximumManualCapsuleWidth = 302
         $maximumManualCapsuleRight = $defaultWindowRight +
             [int]$missing.Settings.MainAttachment.OffsetXDip +
             $maximumManualCapsuleWidth -
             [int]($defaultManualCapsuleWidth / 2)
         Assert-Condition ($maximumManualCapsuleRight -le ($defaultCaptionButtonLeft - $defaultCaptionSafetyGap)) `
-            "默认手动右上位置在 130% 缩放时覆盖标题栏按钮：capsuleRight=$maximumManualCapsuleRight safeRight=$($defaultCaptionButtonLeft - $defaultCaptionSafetyGap)。"
-        Assert-Condition ($missing.Settings.OverlayScalePercent -eq 100) '缺少设置文件时默认缩放不正确。'
-        Assert-Condition (-not (Test-Path -LiteralPath $missingSettingsPath)) '缺少设置文件不应触发写入。'
+            "Верхнее правое положение по умолчанию, установленное вручную, закрывает кнопку строки заголовка при масштабе 130 %: капсулаRight=$maximumManualCapsuleRight SafeRight=$($defaultCaptionButtonLeft - $defaultCaptionSafetyGap)."
+        Assert-Condition ($missing.Settings.OverlayScalePercent -eq 100) 'Неправильное масштабирование по умолчанию при отсутствии файла настроек.'
+        Assert-Condition (-not (Test-Path -LiteralPath $missingSettingsPath)) 'Отсутствие файла настроек не должно вызывать запись.'
 
         $empty = Get-ProbeCase $response 'empty-settings-file'
-        Assert-Condition ($empty.Settings.ManualPlacementEnabled -eq $true) '空设置文件时必须使用默认手动放置。'
-        Assert-Condition ($empty.Settings.MainAttachment.ReferencePoint -eq 2) '空设置文件时默认主窗口参考点不正确。'
-        Assert-Condition ($empty.Settings.MainAttachment.OffsetXDip -eq -344 -and $empty.Settings.MainAttachment.OffsetYDip -eq 24) '空设置文件时默认主窗口偏移不正确。'
-        Assert-Condition ($empty.Settings.OverlayScalePercent -eq 100) '空设置文件时默认缩放不正确。'
+        Assert-Condition ($empty.Settings.ManualPlacementEnabled -eq $true) 'Если файл настроек пуст, необходимо использовать размещение вручную по умолчанию.'
+        Assert-Condition ($empty.Settings.MainAttachment.ReferencePoint -eq 2) 'Контрольная точка главного окна по умолчанию неверна, если файл настроек пуст.'
+        Assert-Condition ($empty.Settings.MainAttachment.OffsetXDip -eq -366 -and $empty.Settings.MainAttachment.OffsetYDip -eq 24) 'Смещение главного окна по умолчанию неверно, если файл настроек пуст.'
+        Assert-Condition ($empty.Settings.OverlayScalePercent -eq 100) 'Масштабирование по умолчанию неверно, если файл настроек пуст.'
 
         $loadedLegacy = Get-ProbeCase $response 'load-legacy-settings-and-persist'
-        Assert-Condition ($loadedLegacy.Settings.AnchorMode -eq 3) '旧设置文件加载后未迁移到标题栏右上。'
-        Assert-Condition ($loadedLegacy.MustPersist -eq $true) '旧设置文件首次加载后必须立即迁移。'
-        Assert-Condition ($loadedLegacy.Settings.ManualPlacementEnabled -eq $false) '旧版无版本设置加载迁移时必须保持传统模式。'
-        Assert-Condition (Test-Path -LiteralPath $migratedSettingsPath -PathType Leaf) '旧设置文件迁移后未立即保存。'
+        Assert-Condition ($loadedLegacy.Settings.AnchorMode -eq 3) 'Старый файл настроек не переносится в правый верхний угол строки заголовка после загрузки.'
+        Assert-Condition ($loadedLegacy.MustPersist -eq $true) 'Старые файлы настроек необходимо переносить сразу после первой загрузки.'
+        Assert-Condition ($loadedLegacy.Settings.ManualPlacementEnabled -eq $false) 'Традиционный режим необходимо поддерживать при загрузке и переносе старой версии без настроек версии.'
+        Assert-Condition (Test-Path -LiteralPath $migratedSettingsPath -PathType Leaf) 'Старый файл настроек не сохраняется сразу после миграции.'
 
         $reloadedMigration = Get-ProbeCase $response 'reload-migrated-settings'
-        Assert-Condition ($reloadedMigration.Settings.AnchorMode -eq 3) '已迁移设置重载后被错误覆盖。'
-        Assert-Condition ($reloadedMigration.MustPersist -eq $false) '已迁移设置重载时不应再次迁移。'
-        Assert-Condition ($reloadedMigration.Settings.ManualPlacementEnabled -eq $false) '旧版无版本设置写回并重载后必须保持传统模式。'
+        Assert-Condition ($reloadedMigration.Settings.AnchorMode -eq 3) 'Перенесенные настройки были перезаписаны из-за ошибок после перезагрузки.'
+        Assert-Condition ($reloadedMigration.MustPersist -eq $false) 'Перенесенные настройки не следует переносить повторно при перезагрузке.'
+        Assert-Condition ($reloadedMigration.Settings.ManualPlacementEnabled -eq $false) 'Старая версия без настроек версии должна оставаться в устаревшем режиме после обратной записи и перезагрузки.'
 
         $visibleNone = Get-ProbeCase $response 'visible-none-becomes-total'
-        Assert-Condition ($visibleNone.Settings.VisibleFields -eq 1) 'VisibleFields=None 未回退到总 Token。'
+        Assert-Condition ($visibleNone.Settings.VisibleFields -eq 1) 'VisibleFields=None не возвращается к общему токену.'
 
         $knownBits = Get-ProbeCase $response 'visible-known-bits-survive'
-        Assert-Condition ($knownBits.Settings.VisibleFields -eq 128) '可见字段未去除未知位或未保留已知位。'
+        Assert-Condition ($knownBits.Settings.VisibleFields -eq 128) 'Видимое поле не удаляет неизвестные биты и не сохраняет известные биты.'
 
         $cacheHitRate = 512
         Assert-Condition (($missing.Settings.VisibleFields -band $cacheHitRate) -ne 0) `
-            '新设置默认必须显示缓存命中率。'
+            'В новых настройках по умолчанию должен отображаться коэффициент попадания в кэш.'
 
         $existing = Get-ProbeCase $response 'existing-visible-fields-preserved'
         Assert-Condition ($existing.Settings.VisibleFields -eq 127) `
-            '已有 VisibleFields 不得自动加入缓存命中率。'
+            'Существующие поля VisibleField не должны автоматически добавляться к частоте попаданий в кэш.'
 
         $duplicateSlots = Get-ProbeCase $response 'duplicate-valid-slots-remain-distinct'
-        Assert-Condition ($duplicateSlots.Settings.CollapsedPrimaryField -eq 64) '有效重复指标错误地改写了左侧选择。'
-        Assert-Condition ($duplicateSlots.Settings.CollapsedSecondaryField -eq 1) '有效重复指标未回退到与左侧不同的安全值。'
+        Assert-Condition ($duplicateSlots.Settings.CollapsedPrimaryField -eq 64) 'Индикатор допустимого дублирования неправильно переопределяет выбор слева.'
+        Assert-Condition ($duplicateSlots.Settings.CollapsedSecondaryField -eq 1) 'Индикатор эффективного повтора не возвращается к безопасному значению, отличному от левого.'
 
         $saveReload = Get-ProbeCase $response 'save-reload-isolated-settings'
-        Assert-Condition ($saveReload.Settings.SettingsVersion -eq 1) '保存重载后设置版本不正确。'
-        Assert-Condition ($saveReload.Settings.AnchorMode -eq 2) '保存重载后用户切换的吸附模式未保留。'
-        Assert-Condition ($saveReload.Settings.VisibleFields -eq 511) '保存重载后可见字段未保留。'
-        Assert-Condition ($saveReload.Settings.CollapsedPrimaryField -eq 64) '保存重载后左侧指标未保留。'
-        Assert-Condition ($saveReload.Settings.CollapsedSecondaryField -eq 1) '保存重载后右侧指标未保留。'
-        Assert-Condition ($saveReload.MustPersist -eq $false) '已保存的当前版本设置不应再次迁移。'
-        Assert-Condition (Test-Path -LiteralPath $migratedSettingsPath -PathType Leaf) '保存重载未写入指定的临时设置路径。'
+        Assert-Condition ($saveReload.Settings.SettingsVersion -eq 1) 'Версия настройки неверна после сохранения и перезагрузки.'
+        Assert-Condition ($saveReload.Settings.AnchorMode -eq 2) 'Режим привязки, переключенный пользователем, не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition ($saveReload.Settings.VisibleFields -eq 511) 'Видимые поля не сохраняются после сохранения и перезагрузки.'
+        Assert-Condition ($saveReload.Settings.CollapsedPrimaryField -eq 64) 'Левый индикатор не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition ($saveReload.Settings.CollapsedSecondaryField -eq 1) 'Индикатор справа не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition ($saveReload.MustPersist -eq $false) 'Сохраненные настройки текущей версии не следует переносить повторно.'
+        Assert-Condition (Test-Path -LiteralPath $migratedSettingsPath -PathType Leaf) 'При сохранении перезагрузки не записывается указанный путь временных настроек.'
 
         $manualPlacement = Get-ProbeCase $response 'manual-placement-roundtrip'
-        Assert-Condition ($manualPlacement.Settings.ManualPlacementEnabled -eq $true) '保存重载后手动放置开关未保留。'
-        Assert-Condition ($manualPlacement.Settings.MainAttachment.ReferencePoint -eq 2) '保存重载后主窗口参考点未保留。'
-        Assert-Condition ($manualPlacement.Settings.MainAttachment.OffsetXDip -eq -112.5 -and $manualPlacement.Settings.MainAttachment.OffsetYDip -eq 24.25) '保存重载后主窗口小数偏移未保留。'
-        Assert-Condition ($manualPlacement.Settings.OverlayScalePercent -eq 73) '保存重载后缩放未保留。'
-        Assert-Condition (Test-Path -LiteralPath $manualPlacementSettingsPath -PathType Leaf) '手动放置未写入指定的临时设置路径。'
-        Assert-Condition ($manualPlacementSettingsPath.StartsWith($testRoot, [StringComparison]::OrdinalIgnoreCase)) '手动放置设置路径必须位于测试临时根目录。'
+        Assert-Condition ($manualPlacement.Settings.ManualPlacementEnabled -eq $true) 'Переключатель ручного размещения не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition ($manualPlacement.Settings.MainAttachment.ReferencePoint -eq 2) 'Опорная точка главного окна не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition ($manualPlacement.Settings.MainAttachment.OffsetXDip -eq -112.5 -and $manualPlacement.Settings.MainAttachment.OffsetYDip -eq 24.25) 'Десятичное смещение главного окна не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition ($manualPlacement.Settings.OverlayScalePercent -eq 73) 'Масштаб не сохраняется после сохранения и перезагрузки.'
+        Assert-Condition (Test-Path -LiteralPath $manualPlacementSettingsPath -PathType Leaf) 'При размещении вручную не записывается указанный путь временных настроек.'
+        Assert-Condition ($manualPlacementSettingsPath.StartsWith($testRoot, [StringComparison]::OrdinalIgnoreCase)) 'Путь к настройкам размещения вручную должен находиться во временном корневом каталоге теста.'
         $manualPlacementSavedJson = Get-Content -LiteralPath $manualPlacementSettingsPath -Encoding UTF8 -Raw | ConvertFrom-Json
-        Assert-Condition ($manualPlacementSavedJson.MainAttachment.ReferencePoint -eq 2) '保存 JSON 未写入主窗口参考点。'
-        Assert-Condition ($manualPlacementSavedJson.MainAttachment.OffsetXDip -eq -112.5 -and $manualPlacementSavedJson.MainAttachment.OffsetYDip -eq 24.25) '保存 JSON 未写入主窗口小数偏移。'
+        Assert-Condition ($manualPlacementSavedJson.MainAttachment.ReferencePoint -eq 2) 'При сохранении JSON не записывается контрольная точка главного окна.'
+        Assert-Condition ($manualPlacementSavedJson.MainAttachment.OffsetXDip -eq -112.5 -and $manualPlacementSavedJson.MainAttachment.OffsetYDip -eq 24.25) 'При сохранении JSON не записывается десятичное смещение главного окна.'
 
         $invalidManualPlacement = Get-ProbeCase $response 'invalid-manual-placement-sanitized'
-        Assert-Condition ($invalidManualPlacement.Settings.ManualPlacementEnabled -eq $true) '无效手动放置不应关闭已启用的手动模式。'
-        Assert-Condition ($invalidManualPlacement.Settings.MainAttachment.ReferencePoint -eq 2) '无效主窗口放置必须回退到默认参考点。'
-        Assert-Condition ($invalidManualPlacement.Settings.MainAttachment.OffsetXDip -eq -344 -and $invalidManualPlacement.Settings.MainAttachment.OffsetYDip -eq 24) '无效主窗口放置必须回退到默认偏移。'
-        Assert-Condition ($invalidManualPlacement.Settings.OverlayScalePercent -eq 130) '超出范围的手动缩放必须钳制到 130%。'
+        Assert-Condition ($invalidManualPlacement.Settings.ManualPlacementEnabled -eq $true) 'Недопустимое размещение вручную не должно отключать включенный ручной режим.'
+        Assert-Condition ($invalidManualPlacement.Settings.MainAttachment.ReferencePoint -eq 2) 'Недопустимое расположение главного окна должно вернуться к исходной точке по умолчанию.'
+        Assert-Condition ($invalidManualPlacement.Settings.MainAttachment.OffsetXDip -eq -366 -and $invalidManualPlacement.Settings.MainAttachment.OffsetYDip -eq 24) 'Недопустимое расположение главного окна должно вернуться к смещению по умолчанию.'
+        Assert-Condition ($invalidManualPlacement.Settings.OverlayScalePercent -eq 130) 'Ручное масштабирование за пределами диапазона должно быть зафиксировано на уровне 130 %.'
 
         $emptyAttachments = Get-ProbeCase $response 'empty-main-attachment-sanitized'
-        Assert-Condition ($emptyAttachments.Settings.MainAttachment.ReferencePoint -eq 2) '空主窗口放置对象必须回退到默认参考点。'
-        Assert-Condition ($emptyAttachments.Settings.MainAttachment.OffsetXDip -eq -344 -and $emptyAttachments.Settings.MainAttachment.OffsetYDip -eq 24) '空主窗口放置对象必须回退到默认偏移。'
+        Assert-Condition ($emptyAttachments.Settings.MainAttachment.ReferencePoint -eq 2) 'Размещенные объекты в пустом главном окне должны вернуться к контрольной точке по умолчанию.'
+        Assert-Condition ($emptyAttachments.Settings.MainAttachment.OffsetXDip -eq -366 -and $emptyAttachments.Settings.MainAttachment.OffsetYDip -eq 24) 'Размещенные объекты в пустом главном окне должны вернуться к смещению по умолчанию.'
 
         foreach ($name in @(
             'incomplete-main-missing-reference-point',
             'incomplete-main-missing-offset-x',
             'incomplete-main-missing-offset-y')) {
             $incompleteMain = Get-ProbeCase $response $name
-            Assert-Condition ($incompleteMain.Settings.MainAttachment.ReferencePoint -eq 2) "$name 必须使主窗口参考点回退默认值。"
-            Assert-Condition ($incompleteMain.Settings.MainAttachment.OffsetXDip -eq -344 -and $incompleteMain.Settings.MainAttachment.OffsetYDip -eq 24) "$name 必须使主窗口偏移回退默认值。"
+            Assert-Condition ($incompleteMain.Settings.MainAttachment.ReferencePoint -eq 2) "$name Контрольная точка главного окна должна быть возвращена к значению по умолчанию."
+            Assert-Condition ($incompleteMain.Settings.MainAttachment.OffsetXDip -eq -366 -and $incompleteMain.Settings.MainAttachment.OffsetYDip -eq 24) "$name Смещение главного окна должно быть возвращено к значению по умолчанию."
         }
 
         $invalidJson = Get-ProbeCase $response 'invalid-json-defaults'
-        Assert-Condition ($invalidJson.Settings.SettingsVersion -eq 1) '损坏 JSON 未回退到当前默认版本。'
-        Assert-Condition ($invalidJson.Settings.AnchorMode -eq 3) '损坏 JSON 未回退到默认吸附模式。'
-        Assert-Condition ($invalidJson.Settings.CollapsedPrimaryField -eq 1) '损坏 JSON 未回退到默认左侧指标。'
-        Assert-Condition ($invalidJson.Settings.CollapsedSecondaryField -eq 1024) '损坏 JSON 未回退到默认右侧指标。'
+        Assert-Condition ($invalidJson.Settings.SettingsVersion -eq 1) 'Поврежденный JSON не возвращается к текущей версии по умолчанию.'
+        Assert-Condition ($invalidJson.Settings.AnchorMode -eq 3) 'Поврежденный JSON не возвращается в режим привязки по умолчанию.'
+        Assert-Condition ($invalidJson.Settings.CollapsedPrimaryField -eq 1) 'Неработающий JSON не возвращается к левому индикатору по умолчанию.'
+        Assert-Condition ($invalidJson.Settings.CollapsedSecondaryField -eq 1024) 'Неверный JSON не возвращается к правильному индикатору по умолчанию.'
     }
 
     if ($areas -contains 'Presentation') {
@@ -1787,34 +1787,34 @@ try {
             UpdatedAtUtc = '2026-08-11T00:00:00Z'
         }
         $fieldExpectations = @(
-            @{ Name = 'total'; Field = 1; CompactLabel = '总'; ExpandedLabel = '总 Token'; Value = '128.4k' },
-            @{ Name = 'input'; Field = 2; CompactLabel = '入'; ExpandedLabel = '输入'; Value = '82.1k' },
-            @{ Name = 'output'; Field = 4; CompactLabel = '出'; ExpandedLabel = '输出'; Value = '12.6k' },
-            @{ Name = 'cache-hit'; Field = 8; CompactLabel = '命中'; ExpandedLabel = '缓存命中'; Value = '31.4k' },
-            @{ Name = 'cache-miss'; Field = 16; CompactLabel = '未中'; ExpandedLabel = '缓存未命中'; Value = '50.7k' },
-            @{ Name = 'context'; Field = 32; CompactLabel = '上下文'; ExpandedLabel = '上下文用量'; Value = '62.0k / 200.0k' },
-            @{ Name = 'context-percent'; Field = 64; CompactLabel = '上下文'; ExpandedLabel = '上下文占用'; Value = '31%' },
-            @{ Name = 'context-remaining'; Field = 1024; CompactLabel = '剩余'; ExpandedLabel = '上下文剩余'; Value = '69.0%' },
-            @{ Name = 'reasoning'; Field = 128; CompactLabel = '推理'; ExpandedLabel = '推理输出'; Value = '6.5k' },
-            @{ Name = 'thread'; Field = 256; CompactLabel = '会话'; ExpandedLabel = '会话'; Value = '1111…555555' },
-            @{ Name = 'cache-hit-rate'; Field = 512; CompactLabel = '命中率'; ExpandedLabel = '缓存命中率'; Value = '38%' }
+            @{ Name = 'total'; Field = 1; CompactLabel = 'Всего'; ExpandedLabel = 'Всего токенов'; Value = '128.4k' },
+            @{ Name = 'input'; Field = 2; CompactLabel = 'Вход'; ExpandedLabel = 'Входные токены'; Value = '82.1k' },
+            @{ Name = 'output'; Field = 4; CompactLabel = 'Выход'; ExpandedLabel = 'Выходные токены'; Value = '12.6k' },
+            @{ Name = 'cache-hit'; Field = 8; CompactLabel = 'Кэш'; ExpandedLabel = 'Токены из кэша'; Value = '31.4k' },
+            @{ Name = 'cache-miss'; Field = 16; CompactLabel = 'Вне кэша'; ExpandedLabel = 'Токены вне кэша'; Value = '50.7k' },
+            @{ Name = 'context'; Field = 32; CompactLabel = 'Контекст'; ExpandedLabel = 'Занято контекста'; Value = '62.0k / 200.0k' },
+            @{ Name = 'context-percent'; Field = 64; CompactLabel = 'Контекст'; ExpandedLabel = 'Заполнено (%)'; Value = '31%' },
+            @{ Name = 'context-remaining'; Field = 1024; CompactLabel = 'Ост.'; ExpandedLabel = 'Свободный контекст'; Value = "69$([System.Globalization.CultureInfo]::CurrentCulture.NumberFormat.NumberDecimalSeparator)0%" },
+            @{ Name = 'reasoning'; Field = 128; CompactLabel = 'Рассужд.'; ExpandedLabel = 'Токены рассуждения'; Value = '6.5k' },
+            @{ Name = 'thread'; Field = 256; CompactLabel = 'Чат'; ExpandedLabel = 'Чат'; Value = '1111…555555' },
+            @{ Name = 'cache-hit-rate'; Field = 512; CompactLabel = 'Кэш %'; ExpandedLabel = 'Доля токенов из кэша'; Value = '38%' }
         )
         $originalCulture = [System.Globalization.CultureInfo]::CurrentCulture
         try {
             [System.Globalization.CultureInfo]::CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('de-DE')
-            Assert-Condition ([System.Globalization.CultureInfo]::CurrentCulture.NumberFormat.NumberDecimalSeparator -eq ',') '区域性覆盖未进入非点号小数文化。'
+            Assert-Condition ([System.Globalization.CultureInfo]::CurrentCulture.NumberFormat.NumberDecimalSeparator -eq ',') 'Региональный охват не включает десятичные культуры без точек.'
             $assembly = [System.Reflection.Assembly]::LoadFrom($applicationDll)
             $presentationBuilder = $assembly.GetType('CodexTokenOverlay.OverlayPresentationBuilder', $true)
             $formatTokenCount = $presentationBuilder.GetMethod(
                 'FormatTokenCount',
                 [System.Reflection.BindingFlags]'Public, Static')
-            Assert-Condition ($null -ne $formatTokenCount) '未找到 FormatTokenCount。'
+            Assert-Condition ($null -ne $formatTokenCount) 'FormatTokenCount не найден.'
             $localizedLargeValue = $formatTokenCount.Invoke($null, [object[]]@([long]128400))
             $localizedMillionValue = $formatTokenCount.Invoke($null, [object[]]@([long]1200000))
             $localizedSmallValue = $formatTokenCount.Invoke($null, [object[]]@([long]999))
-            Assert-Condition ($localizedLargeValue -eq '128.4k') '非点号小数文化下的千级格式必须保持不变。'
-            Assert-Condition ($localizedMillionValue -eq '1.20M') '非点号小数文化下的百万级格式必须保持不变。'
-            Assert-Condition ($localizedSmallValue -eq '999') '非点号小数文化下的整数格式必须保持不变。'
+            Assert-Condition ($localizedLargeValue -eq '128.4k') 'Формат тысячного уровня в десятичных культурах без точек должен оставаться неизменным.'
+            Assert-Condition ($localizedMillionValue -eq '1.20M') 'Формат миллиона должен оставаться неизменным в десятичных культурах без точек.'
+            Assert-Condition ($localizedSmallValue -eq '999') 'Формат целых чисел в десятичных культурах, отличных от точки, должен оставаться неизменным.'
         }
         finally {
             [System.Globalization.CultureInfo]::CurrentCulture = $originalCulture
@@ -1862,7 +1862,7 @@ try {
             @{
                 Name = 'waiting'
                 Operation = 'Waiting'
-                StatusText = '正在等待会话数据'
+                StatusText = 'Ожидание данных сеанса.'
                 PrimaryField = 1
                 SecondaryField = 64
                 VisibleFields = 1023
@@ -1953,30 +1953,30 @@ try {
 
         $response = Invoke-JsonProbe '--presentation-probe' $presentationCases
         $selected = (Get-ProbeCase $response 'primary-secondary').Presentation
-        Assert-Condition ($selected.Primary.CompactLabel -eq '总') '主指标紧凑标签不正确。'
-        Assert-Condition ($selected.Primary.ExpandedLabel -eq '总 Token') '主指标展开标签不正确。'
-        Assert-Condition ($selected.Primary.Value -eq '128.4k') '主指标值格式不正确。'
-        Assert-Condition ($selected.Secondary.CompactLabel -eq '上下文') '次指标紧凑标签不正确。'
-        Assert-Condition ($selected.Secondary.ExpandedLabel -eq '上下文占用') '次指标展开标签不正确。'
-        Assert-Condition ($selected.Secondary.Value -eq '31%') '次指标值格式不正确。'
-        Assert-Condition ($selected.ContextPercent -eq 31) '上下文百分比不正确。'
-        Assert-Condition ($selected.ShowContextProgress -eq $true) '可见上下文百分比时应显示进度。'
-        Assert-Condition (@($selected.ExpandedRows | Where-Object { $_.Field -eq 1 -or $_.Field -eq 64 }).Count -eq 0) '展开行重复了收起指标。'
+        Assert-Condition ($selected.Primary.CompactLabel -eq 'Всего') 'Подпись компактного основного показателя неверна.'
+        Assert-Condition ($selected.Primary.ExpandedLabel -eq 'Всего токенов') 'Неверная подпись основного показателя в раскрытой панели.'
+        Assert-Condition ($selected.Primary.Value -eq '128.4k') 'Неверный формат значения основного индикатора.'
+        Assert-Condition ($selected.Secondary.CompactLabel -eq 'Контекст') 'Подпись компактного вторичного показателя неверна.'
+        Assert-Condition ($selected.Secondary.ExpandedLabel -eq 'Заполнено (%)') 'Подпись развернутого вторичного показателя неверна.'
+        Assert-Condition ($selected.Secondary.Value -eq '31%') 'Неверный формат значения вторичного индикатора.'
+        Assert-Condition ($selected.ContextPercent -eq 31) 'Неверное процентное значение контекста.'
+        Assert-Condition ($selected.ShowContextProgress -eq $true) 'Прогресс должен отображаться, когда виден процент контекста.'
+        Assert-Condition (@($selected.ExpandedRows | Where-Object { $_.Field -eq 1 -or $_.Field -eq 64 }).Count -eq 0) 'Развернутая строка дублирует индикатор свертывания.'
         $contextRow = @($selected.ExpandedRows | Where-Object { $_.Field -eq 32 })
-        Assert-Condition ($contextRow.Count -eq 1 -and $contextRow[0].Value -eq '62.0k / 200.0k') '上下文行格式不正确。'
-        Assert-Condition (@($selected.ExpandedRows | ForEach-Object Field) -join ',' -eq '2,4,8,512,16,32,128,256') '展开行顺序或去重不正确。'
+        Assert-Condition ($contextRow.Count -eq 1 -and $contextRow[0].Value -eq '62.0k / 200.0k') 'Неверный формат контекстной строки.'
+        Assert-Condition (@($selected.ExpandedRows | ForEach-Object Field) -join ',' -eq '2,4,8,512,16,32,128,256') 'Неправильный порядок расширенных строк или дедупликации.'
 
         $zero = (Get-ProbeCase $response 'valid-zero').Presentation
-        Assert-Condition ($zero.Primary.Value -eq '0' -and $zero.Primary.HasValue -eq $true) '合法的数值零应显示为 0。'
-        Assert-Condition ($zero.Secondary.Value -eq '—' -and $zero.Secondary.HasValue -eq $false) '上下文窗口未知时不能显示零占用。'
+        Assert-Condition ($zero.Primary.Value -eq '0' -and $zero.Primary.HasValue -eq $true) 'Допустимое нулевое значение должно отображаться как 0.'
+        Assert-Condition ($zero.Secondary.Value -eq '—' -and $zero.Secondary.HasValue -eq $false) 'Нулевая занятость не может отображаться, если контекстное окно неизвестно.'
 
         $waiting = (Get-ProbeCase $response 'waiting').Presentation
-        Assert-Condition ($waiting.StatusText -eq '正在等待会话数据') '等待态状态文本不正确。'
-        Assert-Condition ($waiting.ShowContextProgress -eq $false) '等待态不应显示上下文进度。'
+        Assert-Condition ($waiting.StatusText -eq 'Ожидание данных сеанса.') 'Неправильный текст состояния ожидания.'
+        Assert-Condition ($waiting.ShowContextProgress -eq $false) 'В состоянии ожидания не должно отображаться прогресс контекста.'
         $waitingMetrics = @($waiting.Primary; $waiting.Secondary; $waiting.ExpandedRows)
-        Assert-Condition (@($waitingMetrics | Where-Object { $_.Value -ne '—' -or $_.HasValue }).Count -eq 0) '等待态指标必须为无值占位。'
+        Assert-Condition (@($waitingMetrics | Where-Object { $_.Value -ne '—' -or $_.HasValue }).Count -eq 0) 'Индикатор состояния ожидания должен быть пустым заполнителем.'
         $waitingCacheHitRate = @($waiting.ExpandedRows | Where-Object { $_.Field -eq 512 })
-        Assert-Condition ($waitingCacheHitRate.Count -eq 1 -and $waitingCacheHitRate[0].Value -eq '—' -and -not $waitingCacheHitRate[0].HasValue) '等待态缓存命中率必须为无值占位。'
+        Assert-Condition ($waitingCacheHitRate.Count -eq 1 -and $waitingCacheHitRate[0].Value -eq '—' -and -not $waitingCacheHitRate[0].HasValue) 'доля токенов из кэша ожидания должна быть пустым заполнителем.'
 
         foreach ($expectedField in $fieldExpectations) {
             $presentation = (Get-ProbeCase $response "field-$($expectedField.Name)").Presentation
@@ -1986,18 +1986,18 @@ try {
             else {
                 @($presentation.Primary)
             }
-            Assert-Condition ($metric.Count -eq 1) "字段 $($expectedField.Name) 未出现在展示结果中。"
-            Assert-Condition ($metric[0].CompactLabel -eq $expectedField.CompactLabel) "字段 $($expectedField.Name) 的紧凑标签不正确。"
-            Assert-Condition ($metric[0].ExpandedLabel -eq $expectedField.ExpandedLabel) "字段 $($expectedField.Name) 的展开标签不正确。"
-            Assert-Condition ($metric[0].Value -eq $expectedField.Value) "字段 $($expectedField.Name) 的值格式不正确。"
-            Assert-Condition ($metric[0].HasValue -eq $true) "字段 $($expectedField.Name) 应有值。"
+            Assert-Condition ($metric.Count -eq 1) "Поле $($expectedField.Name) не отображается в результатах отображения."
+            Assert-Condition ($metric[0].CompactLabel -eq $expectedField.CompactLabel) "Неверная компактная подпись поля $($expectedField.Name)."
+            Assert-Condition ($metric[0].ExpandedLabel -eq $expectedField.ExpandedLabel) "Неверная подпись поля $($expectedField.Name) в раскрытой панели."
+            Assert-Condition ($metric[0].Value -eq $expectedField.Value) "Неверный формат значения поля $($expectedField.Name): ожидается=$($expectedField.Value), получено=$($metric[0].Value)."
+            Assert-Condition ($metric[0].HasValue -eq $true) "Поле $($expectedField.Name) должно иметь значение."
         }
 
         foreach ($contextCase in @('context-below-zero', 'context-zero', 'context-hundred', 'context-above-hundred')) {
             $presentation = Get-ProbeCase $response $contextCase | Select-Object -ExpandProperty Presentation
             if ($contextCase -eq 'context-below-zero') {
-                Assert-Condition ($presentation.Primary.Value -eq '—' -and -not $presentation.Primary.HasValue) '未知上下文应显示破折号。'
-                Assert-Condition (-not $presentation.ShowContextProgress) '未知上下文不应显示进度。'
+                Assert-Condition ($presentation.Primary.Value -eq '—' -and -not $presentation.Primary.HasValue) 'Неизвестный контекст должен отображать тире.'
+                Assert-Condition (-not $presentation.ShowContextProgress) 'Неизвестный контекст не должен отображать прогресс.'
                 continue
             }
             $expectedPercent = switch ($contextCase) {
@@ -2005,8 +2005,8 @@ try {
                 'context-hundred' { 100 }
                 'context-above-hundred' { 100 }
             }
-            Assert-Condition ($presentation.ContextPercent -eq $expectedPercent) "$contextCase 的上下文进度未限制在 0–100。"
-            Assert-Condition ($presentation.Primary.Value -eq "$expectedPercent%") "$contextCase 的上下文显示值未限制在 0–100%。"
+            Assert-Condition ($presentation.ContextPercent -eq $expectedPercent) "Прогресс контекста $contextCase не ограничен значениями 0–100."
+            Assert-Condition ($presentation.Primary.Value -eq "$expectedPercent%") "Значение контекстного отображения для $contextCase не ограничено диапазоном 0–100%."
         }
 
         foreach ($cacheHitCase in @(
@@ -2017,8 +2017,8 @@ try {
             @{ Name = 'cache-hit-maximum'; Value = '100%' })) {
             $presentation = Get-ProbeCase $response $cacheHitCase.Name | Select-Object -ExpandProperty Presentation
             $cacheHitRate = @($presentation.ExpandedRows | Where-Object { $_.Field -eq 512 })
-            Assert-Condition ($cacheHitRate.Count -eq 1 -and $cacheHitRate[0].Value -eq $cacheHitCase.Value) "$($cacheHitCase.Name) 的缓存命中率不正确。"
-            Assert-Condition ($cacheHitRate[0].HasValue -eq $true) "$($cacheHitCase.Name) 的缓存命中率应有值。"
+            Assert-Condition ($cacheHitRate.Count -eq 1 -and $cacheHitRate[0].Value -eq $cacheHitCase.Value) "Неверная частота попаданий в кэш для $($cacheHitCase.Name)."
+            Assert-Condition ($cacheHitRate[0].HasValue -eq $true) "Частота попадания в кэш $($cacheHitCase.Name) должна иметь значение."
         }
 
         $snapshotType = $assembly.GetType('CodexTokenOverlay.TokenSnapshot', $true)
@@ -2027,7 +2027,7 @@ try {
         $createPresentation = $presentationBuilder.GetMethod(
             'Create',
             [System.Reflection.BindingFlags]'Public, Static')
-        Assert-Condition ($null -ne $createPresentation) '未找到 OverlayPresentationBuilder.Create。'
+        Assert-Condition ($null -ne $createPresentation) 'OverlayPresentationBuilder.Create не найден.'
         $reflectionSnapshot = [System.Activator]::CreateInstance($snapshotType, @(
             $snapshot.ThreadId,
             $snapshot.LogPath,
@@ -2049,25 +2049,25 @@ try {
         $cacheHitRatePrimary = $createPresentation.Invoke(
             $null,
             [object[]]@($reflectionSnapshot, $cacheHitRateField, $totalField, $visibleFields))
-        Assert-Condition ($cacheHitRatePrimary.Primary.Field -eq 512) '缓存命中率作为主指标时字段不正确。'
-        Assert-Condition ($cacheHitRatePrimary.Primary.CompactLabel -eq '命中率') '缓存命中率作为主指标时紧凑标签不正确。'
-        Assert-Condition ($cacheHitRatePrimary.Primary.ExpandedLabel -eq '缓存命中率') '缓存命中率作为主指标时展开标签不正确。'
-        Assert-Condition ($cacheHitRatePrimary.Primary.Value -eq '38%' -and $cacheHitRatePrimary.Primary.HasValue -eq $true) '缓存命中率作为主指标时值或 HasValue 不正确。'
-        Assert-Condition ($cacheHitRatePrimary.Secondary.Field -eq 1) '缓存命中率作为主指标时另一指标不正确。'
-        Assert-Condition (@($cacheHitRatePrimary.ExpandedRows | Where-Object { $_.Field -eq 512 -or $_.Field -eq 1 }).Count -eq 0) '缓存命中率作为主指标时展开行不得重复任一收起指标。'
+        Assert-Condition ($cacheHitRatePrimary.Primary.Field -eq 512) 'Поле, в котором в качестве основного индикатора используется частота попаданий в кэш, неверно.'
+        Assert-Condition ($cacheHitRatePrimary.Primary.CompactLabel -eq 'Кэш %') 'Основная подпись для доли попаданий в кэш неверна.'
+        Assert-Condition ($cacheHitRatePrimary.Primary.ExpandedLabel -eq 'Доля токенов из кэша') 'Неверная подпись доли токенов из кэша для основного показателя в раскрытой панели.'
+        Assert-Condition ($cacheHitRatePrimary.Primary.Value -eq '38%' -and $cacheHitRatePrimary.Primary.HasValue -eq $true) 'Неверное значение или HasValue частоты попаданий в кэш в качестве основного показателя.'
+        Assert-Condition ($cacheHitRatePrimary.Secondary.Field -eq 1) 'Если в качестве основного индикатора используется частота попаданий в кэш, другой индикатор является неверным.'
+        Assert-Condition (@($cacheHitRatePrimary.ExpandedRows | Where-Object { $_.Field -eq 512 -or $_.Field -eq 1 }).Count -eq 0) 'Если в качестве основного индикатора используется частота попаданий в кэш, развернутая строка не должна повторять ни один из свернутых индикаторов.'
 
         $cacheHitRateSecondary = $createPresentation.Invoke(
             $null,
             [object[]]@($reflectionSnapshot, $totalField, $cacheHitRateField, $visibleFields))
-        Assert-Condition ($cacheHitRateSecondary.Secondary.Field -eq 512) '缓存命中率作为次指标时字段不正确。'
-        Assert-Condition ($cacheHitRateSecondary.Secondary.CompactLabel -eq '命中率') '缓存命中率作为次指标时紧凑标签不正确。'
-        Assert-Condition ($cacheHitRateSecondary.Secondary.ExpandedLabel -eq '缓存命中率') '缓存命中率作为次指标时展开标签不正确。'
-        Assert-Condition ($cacheHitRateSecondary.Secondary.Value -eq '38%' -and $cacheHitRateSecondary.Secondary.HasValue -eq $true) '缓存命中率作为次指标时值或 HasValue 不正确。'
-        Assert-Condition ($cacheHitRateSecondary.Primary.Field -eq 1) '缓存命中率作为次指标时另一指标不正确。'
-        Assert-Condition (@($cacheHitRateSecondary.ExpandedRows | Where-Object { $_.Field -eq 512 -or $_.Field -eq 1 }).Count -eq 0) '缓存命中率作为次指标时展开行不得重复任一收起指标。'
+        Assert-Condition ($cacheHitRateSecondary.Secondary.Field -eq 512) 'Поле, в котором в качестве вторичного индикатора используется частота попаданий в кэш, неверно.'
+        Assert-Condition ($cacheHitRateSecondary.Secondary.CompactLabel -eq 'Кэш %') 'Вторичная подпись для доли попаданий в кэш неверна.'
+        Assert-Condition ($cacheHitRateSecondary.Secondary.ExpandedLabel -eq 'Доля токенов из кэша') 'Неверная подпись доли токенов из кэша для дополнительного показателя в раскрытой панели.'
+        Assert-Condition ($cacheHitRateSecondary.Secondary.Value -eq '38%' -and $cacheHitRateSecondary.Secondary.HasValue -eq $true) 'Значение или HasValue частоты попаданий в кэш в качестве вторичного показателя неверно.'
+        Assert-Condition ($cacheHitRateSecondary.Primary.Field -eq 1) 'Если в качестве вторичного показателя используется коэффициент попадания в кэш, другой показатель является неверным.'
+        Assert-Condition (@($cacheHitRateSecondary.ExpandedRows | Where-Object { $_.Field -eq 512 -or $_.Field -eq 1 }).Count -eq 0) 'Если в качестве вторичного индикатора используется частота попаданий в кэш, развернутая строка не должна повторять ни один из свернутых индикаторов.'
 
         $allMetrics = @($selected.Primary; $selected.Secondary; $selected.ExpandedRows; $waiting.Primary; $waiting.Secondary; $waiting.ExpandedRows)
-        Assert-Condition (@($allMetrics | Where-Object { $_.CompactLabel -match "[\r\n]" -or $_.ExpandedLabel -match "[\r\n]" -or $_.Value -match "[\r\n]" }).Count -eq 0) '展示字段不允许包含 CR/LF。'
+        Assert-Condition (@($allMetrics | Where-Object { $_.CompactLabel -match "[\r\n]" -or $_.ExpandedLabel -match "[\r\n]" -or $_.Value -match "[\r\n]" }).Count -eq 0) 'Поля отображения не могут содержать CR/LF.'
     }
 
     if ($areas -contains 'Layout') {
@@ -2210,7 +2210,7 @@ try {
                 RelativeBounds = @{ X = 1390; Y = 0; Width = 210; Height = 48 }
             },
             @{ Name = 'exact-collapsed'; HostWindow = $baseWindow; AnchorMode = 3; RequestExpanded = $false; ExpandedRowCount = 4; ShowContextProgress = $true },
-            @{ Name = 'exact-expanded'; HostWindow = $baseWindow; AnchorMode = 3; RequestExpanded = $true; ExpandedRowCount = 4; ShowContextProgress = $true; ClientPoints = @(@{ X = 20; Y = 20 }, @{ X = 100; Y = 20 }, @{ X = 20; Y = 80 }); ScreenPoints = @(@{ X = 792; Y = 26 }, @{ X = 872; Y = 26 }, @{ X = 792; Y = 86 }) },
+            @{ Name = 'exact-expanded'; HostWindow = $baseWindow; AnchorMode = 3; RequestExpanded = $true; ExpandedRowCount = 4; ShowContextProgress = $true; ClientPoints = @(@{ X = 20; Y = 20 }, @{ X = 100; Y = 20 }, @{ X = 20; Y = 80 }); ScreenPoints = @(@{ X = 762; Y = 26 }, @{ X = 842; Y = 26 }, @{ X = 762; Y = 86 }) },
             @{ Name = 'explicit-default-no-manual'; HostWindow = $baseWindow; AnchorMode = 3; RequestExpanded = $false; ExpandedRowCount = 4; ShowContextProgress = $true; ManualCapsuleCenter = $null; ScalePercent = 100 },
             @{ Name = 'manual-collapsed-60'; HostWindow = $baseWindow; AnchorMode = 3; RequestExpanded = $false; ExpandedRowCount = 4; ShowContextProgress = $true; ManualCapsuleCenter = @{ X = 1000; Y = 300 }; ScalePercent = 60 },
             @{ Name = 'manual-collapsed-100'; HostWindow = $baseWindow; AnchorMode = 3; RequestExpanded = $false; ExpandedRowCount = 4; ShowContextProgress = $true; ManualCapsuleCenter = @{ X = 1000; Y = 300 }; ScalePercent = 100 },
@@ -2273,126 +2273,126 @@ try {
         $removedLayoutProperty = 'Preferred' + 'P' + 'etBounds'
         Assert-Condition `
             (-not (@($layoutContract.LayoutRequestProperties) -contains $removedLayoutProperty)) `
-            "OverlayLayoutRequest 不得保留已删除的附着矩形属性。actual=$(@($layoutContract.LayoutRequestProperties) -join ',')"
-        Assert-Rect (Get-ProbeCase $response 'caption-relative-to-negative-screen').ScreenBounds -210 20 210 48 '标题按钮相对坐标未以原始窗口左上角转换为屏幕坐标。'
+            "OverlayLayoutRequest не должен содержать удалённое свойство прямоугольника привязки. actual=$(@($layoutContract.LayoutRequestProperties) -join ',')"
+        Assert-Rect (Get-ProbeCase $response 'caption-relative-to-negative-screen').ScreenBounds -210 20 210 48 'Относительные координаты кнопки заголовка не преобразуются в координаты экрана, основанные на верхнем левом углу исходного окна.'
         $collapsed = (Get-ProbeCase $response 'exact-collapsed').Layout
-        Assert-Condition ((Get-ProbeCase $response 'exact-collapsed').Handle -eq 4294967296) '布局探针未以 long 往返窗口句柄。'
-        Assert-Condition ($collapsed.State -eq 0) '精确收起案例状态不正确。'
-        Assert-Condition ($collapsed.CollapsedDisplay -eq 0) '精确收起案例未显示双字段。'
-        Assert-Condition ((@($collapsed.WindowBounds.PSObject.Properties.Name | Sort-Object) -join ',') -eq 'Height,Width,X,Y') '布局探针矩形必须只序列化 X/Y/Width/Height。'
-        Assert-Rect $collapsed.WindowBounds 802 6 240 34 '100% 标题栏双字段宽度必须为 240。'
-        Assert-Rect $collapsed.CapsuleBounds 0 0 240 34 '100% 标题栏胶囊客户区宽度必须为 240。'
-        Assert-Rect $collapsed.PanelBounds 0 0 0 0 '精确收起面板应为空。'
+        Assert-Condition ((Get-ProbeCase $response 'exact-collapsed').Handle -eq 4294967296) 'Пробник макета не обрабатывает дескриптор окна туда и обратно в течение длительного времени.'
+        Assert-Condition ($collapsed.State -eq 0) 'Точный статус случая коллапса неверен.'
+        Assert-Condition ($collapsed.CollapsedDisplay -eq 0) 'В случае точного свертывания не отображаются двойные поля.'
+        Assert-Condition ((@($collapsed.WindowBounds.PSObject.Properties.Name | Sort-Object) -join ',') -eq 'Height,Width,X,Y') 'Прямоугольник пробного макета должен сериализовать только X/Y/Ширину/Высоту.'
+        Assert-Rect $collapsed.WindowBounds 778 6 264 34 'Ширина двойного поля строки заголовка при 100% масштабе должна быть 264 DIP.'
+        Assert-Rect $collapsed.CapsuleBounds 0 0 264 34 'Ширина клиентской области капсулы строки заголовка при 100% масштабе должна быть 264 DIP.'
+        Assert-Rect $collapsed.PanelBounds 0 0 0 0 'Панель точного свертывания должна быть пустой.'
 
         $expandedCase = Get-ProbeCase $response 'exact-expanded'
         $expanded = $expandedCase.Layout
-        Assert-Condition ($expanded.State -eq 1) '精确展开案例状态不正确。'
-        Assert-Condition ($expanded.ExpansionDirection -eq 0) '标题栏展开方向必须向下。'
-        Assert-Condition ($expanded.Dpi -eq 96) '布局结果 DPI 不正确。'
-        Assert-Condition ($expanded.ExpandedRowHeight -eq 30) '正常展开行高不正确。'
-        Assert-Rect $expanded.WindowBounds 772 6 270 282 '精确展开窗口矩形不正确。'
-        Assert-Rect $expanded.CapsuleBounds 30 0 240 34 '加宽胶囊必须在展开窗口内右对齐。'
-        Assert-Rect $expanded.PanelBounds 0 40 270 242 '面板几何不得变化。'
-        Assert-Condition (-not $expandedCase.ContainsClientPoints[0]) '左上角 30×40 镂空区不应可交互。'
-        Assert-Condition ($expandedCase.ContainsClientPoints[1]) '胶囊点应在交互并集中。'
-        Assert-Condition ($expandedCase.ContainsClientPoints[2]) '面板点应在交互并集中。'
-        Assert-Condition (-not $expandedCase.ContainsScreenPoints[0]) '屏幕坐标镂空区不应可交互。'
-        Assert-Condition ($expandedCase.ContainsScreenPoints[1]) '屏幕坐标胶囊点应可交互。'
-        Assert-Condition ($expandedCase.ContainsScreenPoints[2]) '屏幕坐标面板点应可交互。'
+        Assert-Condition ($expanded.State -eq 1) 'Точный статус расширения неверен.'
+        Assert-Condition ($expanded.ExpansionDirection -eq 0) 'Направление расширения строки заголовка должно быть вниз.'
+        Assert-Condition ($expanded.Dpi -eq 96) 'Неверное разрешение макета.'
+        Assert-Condition ($expanded.ExpandedRowHeight -eq 30) 'Неправильная высота строки обычного расширения.'
+        Assert-Rect $expanded.WindowBounds 742 6 300 282 'Неправильный точный прямоугольник окна расширения.'
+        Assert-Rect $expanded.CapsuleBounds 36 0 264 34 'Расширенные капсулы должны быть выровнены по правому краю расширенного окна.'
+        Assert-Rect $expanded.PanelBounds 0 40 300 242 'Геометрия панели не должна меняться.'
+        Assert-Condition (-not $expandedCase.ContainsClientPoints[0]) 'Полая область размером 30×40 в верхнем левом углу не должна быть интерактивной.'
+        Assert-Condition ($expandedCase.ContainsClientPoints[1]) 'Точки капсулы должны быть сосредоточены на взаимодействии.'
+        Assert-Condition ($expandedCase.ContainsClientPoints[2]) 'Точки панели должны быть сосредоточены на интерактивном объединении.'
+        Assert-Condition (-not $expandedCase.ContainsScreenPoints[0]) 'Полая область координат экрана не должна быть интерактивной.'
+        Assert-Condition ($expandedCase.ContainsScreenPoints[1]) 'Точки капсулы координат на экране должны быть интерактивными.'
+        Assert-Condition ($expandedCase.ContainsScreenPoints[2]) 'Точки панели координат на экране должны быть интерактивными.'
 
-        Assert-Condition ($collapsed.ScalePercent -eq 100 -and $expanded.ScalePercent -eq 100) '缺省缩放必须在收起和展开结果中保持 100%。'
+        Assert-Condition ($collapsed.ScalePercent -eq 100 -and $expanded.ScalePercent -eq 100) 'Масштабирование по умолчанию должно оставаться на уровне 100 % в свернутых и развернутых результатах.'
         Assert-LayoutEqual `
             (Get-ProbeCase $response 'explicit-default-no-manual').Layout `
             $collapsed `
-            'ManualCapsuleCenter=null 且 ScalePercent=100 必须完整保留旧标题栏几何。'
+            'ManualCapsuleCenter=null и ScalePercent=100 должны оставлять неизменной геометрию старой основной надписи.'
 
         foreach ($manualCollapsedCase in @(
-            @{ Name = 'manual-collapsed-60'; X = 941; Y = 290; Width = 118; Height = 20; Scale = 60 },
-            @{ Name = 'manual-collapsed-100'; X = 902; Y = 283; Width = 196; Height = 34; Scale = 100 },
-            @{ Name = 'manual-collapsed-130'; X = 873; Y = 278; Width = 255; Height = 44; Scale = 130 },
-            @{ Name = 'manual-collapsed-192-60'; X = 883; Y = 280; Width = 235; Height = 41; Scale = 60 },
-            @{ Name = 'manual-scale-low-sanitized'; X = 941; Y = 290; Width = 118; Height = 20; Scale = 60 },
-            @{ Name = 'manual-scale-high-sanitized'; X = 873; Y = 278; Width = 255; Height = 44; Scale = 130 }
+            @{ Name = 'manual-collapsed-60'; X = 931; Y = 290; Width = 139; Height = 20; Scale = 60 },
+            @{ Name = 'manual-collapsed-100'; X = 884; Y = 283; Width = 232; Height = 34; Scale = 100 },
+            @{ Name = 'manual-collapsed-130'; X = 849; Y = 278; Width = 302; Height = 44; Scale = 130 },
+            @{ Name = 'manual-collapsed-192-60'; X = 861; Y = 280; Width = 278; Height = 41; Scale = 60 },
+            @{ Name = 'manual-scale-low-sanitized'; X = 931; Y = 290; Width = 139; Height = 20; Scale = 60 },
+            @{ Name = 'manual-scale-high-sanitized'; X = 849; Y = 278; Width = 302; Height = 44; Scale = 130 }
         )) {
             $manualCollapsed = (Get-ProbeCase $response $manualCollapsedCase.Name).Layout
-            Assert-Condition ($manualCollapsed.State -eq 0 -and $manualCollapsed.CollapsedDisplay -eq 0) "$($manualCollapsedCase.Name) 必须保留手动双字段收起布局。"
-            Assert-Condition ($manualCollapsed.ScalePercent -eq $manualCollapsedCase.Scale) "$($manualCollapsedCase.Name) 返回的缩放未正确清理。"
-            Assert-Rect $manualCollapsed.WindowBounds $manualCollapsedCase.X $manualCollapsedCase.Y $manualCollapsedCase.Width $manualCollapsedCase.Height "$($manualCollapsedCase.Name) 手动中心收起矩形不正确。"
-            Assert-Rect $manualCollapsed.CapsuleBounds 0 0 $manualCollapsedCase.Width $manualCollapsedCase.Height "$($manualCollapsedCase.Name) 手动胶囊客户区不正确。"
+            Assert-Condition ($manualCollapsed.State -eq 0 -and $manualCollapsed.CollapsedDisplay -eq 0) "$($manualCollapsedCase.Name) должен сохранять макет ручного свертывания двойных полей."
+            Assert-Condition ($manualCollapsed.ScalePercent -eq $manualCollapsedCase.Scale) "Весы, возвращенные $($manualCollapsedCase.Name), не были очищены должным образом."
+            Assert-Rect $manualCollapsed.WindowBounds $manualCollapsedCase.X $manualCollapsedCase.Y $manualCollapsedCase.Width $manualCollapsedCase.Height "$($manualCollapsedCase.Name) Неправильный прямоугольник с ручным втягиванием центра."
+            Assert-Rect $manualCollapsed.CapsuleBounds 0 0 $manualCollapsedCase.Width $manualCollapsedCase.Height "$($manualCollapsedCase.Name) Неверная клиентская область капсулы вручную."
         }
-        Assert-Condition ((Get-ProbeCase $response 'manual-collapsed-100').Layout.CapsuleBounds.Width -eq 196) '手动吸附双字段宽度不得改变。'
+        Assert-Condition ((Get-ProbeCase $response 'manual-collapsed-100').Layout.CapsuleBounds.Width -eq 232) 'Нельзя изменять ширину двойного поля ручной привязки.'
 
         foreach ($manualExpandedCase in @(
-            @{ Name = 'manual-expanded-60'; X = 897; Y = 290; Width = 162; Height = 169; CapsuleX = 44; CapsuleY = 0; CapsuleWidth = 118; CapsuleHeight = 20; PanelY = 24; PanelHeight = 145; RowHeight = 18; Scale = 60 },
-            @{ Name = 'manual-expanded-100'; X = 828; Y = 283; Width = 270; Height = 282; CapsuleX = 74; CapsuleY = 0; CapsuleWidth = 196; CapsuleHeight = 34; PanelY = 40; PanelHeight = 242; RowHeight = 30; Scale = 100 },
-            @{ Name = 'manual-expanded-130'; X = 777; Y = 278; Width = 351; Height = 367; CapsuleX = 96; CapsuleY = 0; CapsuleWidth = 255; CapsuleHeight = 44; PanelY = 52; PanelHeight = 315; RowHeight = 39; Scale = 130 }
+            @{ Name = 'manual-expanded-60'; X = 890; Y = 290; Width = 180; Height = 169; CapsuleX = 41; CapsuleY = 0; CapsuleWidth = 139; CapsuleHeight = 20; PanelY = 24; PanelHeight = 145; RowHeight = 18; Scale = 60 },
+            @{ Name = 'manual-expanded-100'; X = 816; Y = 283; Width = 300; Height = 282; CapsuleX = 68; CapsuleY = 0; CapsuleWidth = 232; CapsuleHeight = 34; PanelY = 40; PanelHeight = 242; RowHeight = 30; Scale = 100 },
+            @{ Name = 'manual-expanded-130'; X = 761; Y = 278; Width = 390; Height = 367; CapsuleX = 88; CapsuleY = 0; CapsuleWidth = 302; CapsuleHeight = 44; PanelY = 52; PanelHeight = 315; RowHeight = 39; Scale = 130 }
         )) {
             $manualExpanded = (Get-ProbeCase $response $manualExpandedCase.Name).Layout
-            Assert-Condition ($manualExpanded.State -eq 1 -and $manualExpanded.ExpansionDirection -eq 0) "$($manualExpandedCase.Name) 必须向下展开。"
-            Assert-Condition ($manualExpanded.ScalePercent -eq $manualExpandedCase.Scale) "$($manualExpandedCase.Name) 返回缩放不正确。"
-            Assert-Condition ($manualExpanded.ExpandedRowHeight -eq $manualExpandedCase.RowHeight) "$($manualExpandedCase.Name) 行高未按用户比例缩放。"
-            Assert-Rect $manualExpanded.WindowBounds $manualExpandedCase.X $manualExpandedCase.Y $manualExpandedCase.Width $manualExpandedCase.Height "$($manualExpandedCase.Name) 展开窗口矩形不正确。"
-            Assert-Rect $manualExpanded.CapsuleBounds $manualExpandedCase.CapsuleX $manualExpandedCase.CapsuleY $manualExpandedCase.CapsuleWidth $manualExpandedCase.CapsuleHeight "$($manualExpandedCase.Name) 胶囊矩形不正确。"
-            Assert-Rect $manualExpanded.PanelBounds 0 $manualExpandedCase.PanelY $manualExpandedCase.Width $manualExpandedCase.PanelHeight "$($manualExpandedCase.Name) 面板尺寸未按用户比例缩放。"
+            Assert-Condition ($manualExpanded.State -eq 1 -and $manualExpanded.ExpansionDirection -eq 0) "$($manualExpandedCase.Name) необходимо раскрыть вниз."
+            Assert-Condition ($manualExpanded.ScalePercent -eq $manualExpandedCase.Scale) "$($manualExpandedCase.Name) возвращает неправильное масштабирование."
+            Assert-Condition ($manualExpanded.ExpandedRowHeight -eq $manualExpandedCase.RowHeight) "$($manualExpandedCase.Name) Высота строки не масштабируется пользователем."
+            Assert-Rect $manualExpanded.WindowBounds $manualExpandedCase.X $manualExpandedCase.Y $manualExpandedCase.Width $manualExpandedCase.Height "$($manualExpandedCase.Name) Неправильный прямоугольник развернутого окна."
+            Assert-Rect $manualExpanded.CapsuleBounds $manualExpandedCase.CapsuleX $manualExpandedCase.CapsuleY $manualExpandedCase.CapsuleWidth $manualExpandedCase.CapsuleHeight "$($manualExpandedCase.Name) Неправильный прямоугольник капсулы."
+            Assert-Rect $manualExpanded.PanelBounds 0 $manualExpandedCase.PanelY $manualExpandedCase.Width $manualExpandedCase.PanelHeight "$($manualExpandedCase.Name) Размер панели не масштабируется пользователем."
         }
 
-        Assert-Condition ((Get-ProbeCase $response 'manual-direction-60-down').Layout.ExpansionDirection -eq 0) '60% 手动布局应按缩放后的可用高度向下展开。'
-        Assert-Condition ((Get-ProbeCase $response 'manual-direction-130-up').Layout.ExpansionDirection -eq 1) '130% 手动布局应按缩放后的可用高度向上展开。'
+        Assert-Condition ((Get-ProbeCase $response 'manual-direction-60-down').Layout.ExpansionDirection -eq 0) '60% Макет вручную должен расширяться вниз на доступную высоту после масштабирования.'
+        Assert-Condition ((Get-ProbeCase $response 'manual-direction-130-up').Layout.ExpansionDirection -eq 1) '130% Макет вручную должен расширяться вверх на доступную высоту после масштабирования.'
 
         $manualOutside = (Get-ProbeCase $response 'manual-outside-work-area').Layout
-        Assert-Condition ($manualOutside.State -eq 1 -and $manualOutside.ExpansionDirection -eq 1) '工作区外手动中心应最小平移后向上展开。'
-        Assert-Rect $manualOutside.WindowBounds 1650 758 270 282 '工作区外手动中心的完整窗口必须钳制到工作区。'
-        Assert-Rect $manualOutside.CapsuleBounds 74 248 196 34 '工作区外手动中心的胶囊平移不正确。'
-        Assert-Rect $manualOutside.PanelBounds 0 0 270 242 '工作区外手动中心的面板必须完整保留。'
+        Assert-Condition ($manualOutside.State -eq 1 -and $manualOutside.ExpansionDirection -eq 1) 'Центр ручного управления за пределами рабочей зоны должен переместиться вверх после минимального перемещения.'
+        Assert-Rect $manualOutside.WindowBounds 1620 758 300 282 'Полное окно ручного центра за пределами рабочей зоны должно быть прикреплено к рабочей зоне.'
+        Assert-Rect $manualOutside.CapsuleBounds 68 248 232 34 'Неправильный перевод капсулы ручного центра за пределы рабочей зоны.'
+        Assert-Rect $manualOutside.PanelBounds 0 0 300 242 'Панель ручного центра за пределами рабочей зоны должна оставаться неповрежденной.'
 
         $manualNoExpansion = (Get-ProbeCase $response 'manual-no-expansion-does-not-fall-back').Layout
-        Assert-Condition ($manualNoExpansion.State -eq 0) '手动布局上下均无法展开时必须保持收起。'
-        Assert-Rect $manualNoExpansion.WindowBounds 902 68 196 34 '手动展开无空间时不得回落传统锚点。'
+        Assert-Condition ($manualNoExpansion.State -eq 0) 'Макет вручную должен оставаться свернутым, если его нельзя развернуть вверх или вниз.'
+        Assert-Rect $manualNoExpansion.WindowBounds 884 68 232 34 'Традиционную точку привязки нельзя удалить, если при расширении вручную нет места.'
 
         $manualCaptionCollision = (Get-ProbeCase $response 'manual-titlebar-cannot-expand-over-caption-buttons').Layout
-        Assert-Condition ($manualCaptionCollision.State -eq 0) '标题栏中的手动胶囊无法安全容纳展开面板时必须保持收起。'
-        Assert-Rect $manualCaptionCollision.WindowBounds 58 2 255 44 '标题栏手动布局不得为展开面板移入标题按钮区。'
+        Assert-Condition ($manualCaptionCollision.State -eq 0) 'Капсула с ручным управлением в строке заголовка должна оставаться втянутой, если она не может безопасно разместить расширенную панель.'
+        Assert-Rect $manualCaptionCollision.WindowBounds 34 2 302 44 'Ручной макет строки заголовка нельзя переместить в область кнопки заголовка для расширенных панелей.'
 
-        Assert-Condition ((Get-ProbeCase $response 'hidden-scale-sanitized').Layout.ScalePercent -eq 130) 'Hidden 结果也必须携带清理后的缩放。'
+        Assert-Condition ((Get-ProbeCase $response 'hidden-scale-sanitized').Layout.ScalePercent -eq 130) 'Скрытые результаты также должны содержать очищенное отшелушивание.'
 
         $legacyScaled = (Get-ProbeCase $response 'legacy-system-offsets-at-scale-60').Layout
-        Assert-Rect $legacyScaled.WindowBounds 1064 56 118 20 '传统锚点偏移必须仅按系统 DPI 缩放，胶囊尺寸才使用用户比例。'
+        Assert-Rect $legacyScaled.WindowBounds 1043 56 139 20 'Устаревшие смещения привязки должны масштабироваться только по системному DPI, размеры капсул используют пользовательский масштаб.'
 
         $primary = (Get-ProbeCase $response 'primary-only').Layout
-        Assert-Condition ($primary.State -eq 0 -and $primary.CollapsedDisplay -eq 1) '150 DIP 可用宽度必须降级为单字段。'
-        Assert-Rect $primary.WindowBounds 194 6 116 34 '单字段收起宽度必须为 116 DIP。'
+        Assert-Condition ($primary.State -eq 0 -and $primary.CollapsedDisplay -eq 1) 'Доступную ширину 150 DIP необходимо уменьшить до одного поля.'
+        Assert-Rect $primary.WindowBounds 182 6 128 34 'Ширина свернутого отдельного поля должна составлять 128 DIP.'
         $primaryExpanded = (Get-ProbeCase $response 'primary-can-expand').Layout
-        Assert-Condition ($primaryExpanded.State -eq 1 -and $primaryExpanded.CollapsedDisplay -eq 1) 'PrimaryOnly 不应阻止完整面板展开。'
-        Assert-Rect $primaryExpanded.PanelBounds 0 40 270 242 'PrimaryOnly 展开面板必须保留完整宽度。'
+        Assert-Condition ($primaryExpanded.State -eq 1 -and $primaryExpanded.CollapsedDisplay -eq 1) 'PrimaryOnly не должен препятствовать полному расширению панели.'
+        Assert-Rect $primaryExpanded.PanelBounds 0 40 300 242 'PrimaryТолько расширенные панели должны сохранять свою полную ширину.'
 
         $narrowPrimary = (Get-ProbeCase $response 'narrow-primary-115').Layout
-        Assert-Condition ($narrowPrimary.State -eq 0) '115px 可用宽度必须保持收起显示，不能误判为空间不足。'
-        Assert-Condition ($narrowPrimary.ScalePercent -eq 99) '115px 可用宽度必须选择最大 99% 比例。'
-        Assert-Condition ($narrowPrimary.CollapsedDisplay -eq 1) '115px 可用宽度必须降级为单字段。'
-        Assert-Condition ($narrowPrimary.CapsuleBounds.Width -eq 115) '115px 可用宽度的胶囊必须完整占用 115px。'
-        Assert-Rect $narrowPrimary.WindowBounds 160 6 115 34 '115px 可用宽度的 99% 单字段矩形不正确。'
+        Assert-Condition ($narrowPrimary.State -eq 0) 'Доступная ширина 115 пикселей должна оставаться свернутой и не может быть ошибочно расценена как недостаточное пространство.'
+        Assert-Condition ($narrowPrimary.ScalePercent -eq 90) 'Необходимо выбрать доступную ширину 115 пикселей с максимальным масштабом 90%.'
+        Assert-Condition ($narrowPrimary.CollapsedDisplay -eq 1) 'Доступную ширину в 115 пикселей необходимо уменьшить до одного поля.'
+        Assert-Condition ($narrowPrimary.CapsuleBounds.Width -eq 115) 'Капсула доступной ширины 115 пикселей должна занимать все 115 пикселей.'
+        Assert-Rect $narrowPrimary.WindowBounds 160 7 115 31 'Прямоугольник с одним полем размером 115 пикселей является неправильным при 90 % доступной ширины.'
 
         $hiddenWidth = (Get-ProbeCase $response 'hidden-for-width').Layout
-        Assert-Condition ($hiddenWidth.State -eq 2) '小于 60% 单字段宽度的可用空间必须隐藏。'
-        Assert-Rect $hiddenWidth.WindowBounds 0 0 0 0 '宽度不足时窗口矩形必须为空。'
-        Assert-Rect $hiddenWidth.CapsuleBounds 0 0 0 0 '宽度不足时胶囊矩形必须为空。'
-        Assert-Rect $hiddenWidth.PanelBounds 0 0 0 0 '宽度不足时面板矩形必须为空。'
+        Assert-Condition ($hiddenWidth.State -eq 2) 'Свободное пространство размером менее 60 % ширины одного поля должно быть скрыто.'
+        Assert-Rect $hiddenWidth.WindowBounds 0 0 0 0 'Прямоугольник окна должен быть пустым, если его ширина недостаточна.'
+        Assert-Rect $hiddenWidth.CapsuleBounds 0 0 0 0 'Прямоугольник капсулы должен быть пустым, если его ширина недостаточна.'
+        Assert-Rect $hiddenWidth.PanelBounds 0 0 0 0 'Прямоугольник панели должен быть пустым, если ширина недостаточна.'
 
         foreach ($dpiCase in @(
-            @{ Name = 'dpi-120'; Dpi = 120; CapsuleWidth = 300; CapsuleHeight = 43; PanelWidth = 338; PanelHeight = 305; RowHeight = 38 },
-            @{ Name = 'dpi-144'; Dpi = 144; CapsuleWidth = 360; CapsuleHeight = 51; PanelWidth = 405; PanelHeight = 363; RowHeight = 45 },
-            @{ Name = 'dpi-192'; Dpi = 192; CapsuleWidth = 480; CapsuleHeight = 68; PanelWidth = 540; PanelHeight = 484; RowHeight = 60 }
+            @{ Name = 'dpi-120'; Dpi = 120; CapsuleWidth = 330; CapsuleHeight = 43; PanelWidth = 375; PanelHeight = 305; RowHeight = 38 },
+            @{ Name = 'dpi-144'; Dpi = 144; CapsuleWidth = 396; CapsuleHeight = 51; PanelWidth = 450; PanelHeight = 363; RowHeight = 45 },
+            @{ Name = 'dpi-192'; Dpi = 192; CapsuleWidth = 528; CapsuleHeight = 68; PanelWidth = 600; PanelHeight = 484; RowHeight = 60 }
         )) {
             $layout = (Get-ProbeCase $response $dpiCase.Name).Layout
-            Assert-Condition ($layout.Dpi -eq $dpiCase.Dpi) "$($dpiCase.Name) 返回 DPI 不正确。"
-            Assert-Condition ($layout.CapsuleBounds.Width -eq $dpiCase.CapsuleWidth -and $layout.CapsuleBounds.Height -eq $dpiCase.CapsuleHeight) "$($dpiCase.Name) 胶囊未恰好缩放一次。"
-            Assert-Condition ($layout.PanelBounds.Width -eq $dpiCase.PanelWidth -and $layout.PanelBounds.Height -eq $dpiCase.PanelHeight) "$($dpiCase.Name) 面板未恰好缩放一次。"
-            Assert-Condition ($layout.ExpandedRowHeight -eq $dpiCase.RowHeight) "$($dpiCase.Name) 行高未恰好缩放一次。"
+            Assert-Condition ($layout.Dpi -eq $dpiCase.Dpi) "$($dpiCase.Name) возвращает неверный DPI."
+            Assert-Condition ($layout.CapsuleBounds.Width -eq $dpiCase.CapsuleWidth -and $layout.CapsuleBounds.Height -eq $dpiCase.CapsuleHeight) "Капсула $($dpiCase.Name) не масштабировалась ровно один раз."
+            Assert-Condition ($layout.PanelBounds.Width -eq $dpiCase.PanelWidth -and $layout.PanelBounds.Height -eq $dpiCase.PanelHeight) "$($dpiCase.Name) Панель не масштабируется ровно один раз."
+            Assert-Condition ($layout.ExpandedRowHeight -eq $dpiCase.RowHeight) "$($dpiCase.Name) Высота строки не масштабируется ровно один раз."
         }
         $dpi192 = (Get-ProbeCase $response 'dpi-192').Layout
-        Assert-Rect $dpi192.WindowBounds 1544 12 540 564 '192 DPI 展开窗口必须严格为 96 DPI 的两倍。'
-        Assert-Rect $dpi192.CapsuleBounds 60 0 480 68 '192 DPI 胶囊客户区必须严格为 96 DPI 的两倍。'
-        Assert-Rect $dpi192.PanelBounds 0 80 540 484 '192 DPI 面板客户区必须严格为 96 DPI 的两倍。'
+        Assert-Rect $dpi192.WindowBounds 1484 12 600 564 'Расширенные окна с разрешением 192 DPI должны быть строго в два раза больше окна с разрешением 96 DPI.'
+        Assert-Rect $dpi192.CapsuleBounds 72 0 528 68 'Клиентская область капсулы с разрешением 192 DPI должна быть строго в два раза больше, чем размер клиентской области с разрешением 96 DPI.'
+        Assert-Rect $dpi192.PanelBounds 0 80 600 484 'Клиентская область панели с разрешением 192 DPI должна быть строго вдвое больше, чем 96 DPI.'
 
         foreach ($boundedCase in @('negative-display', 'clipped-maximized', 'partially-offscreen')) {
             $layout = (Get-ProbeCase $response $boundedCase).Layout
@@ -2401,60 +2401,60 @@ try {
                 'clipped-maximized' { $clippedWindow }
                 default { $partiallyOffscreenWindow }
             }
-            Assert-Condition ($layout.WindowBounds.X -ge $hostFixture.WorkingArea.X -and $layout.WindowBounds.Y -ge $hostFixture.WorkingArea.Y) "$boundedCase 超出工作区左上边界。"
-            Assert-Condition (($layout.WindowBounds.X + $layout.WindowBounds.Width) -le ($hostFixture.WorkingArea.X + $hostFixture.WorkingArea.Width)) "$boundedCase 超出工作区右边界。"
-            Assert-Condition (($layout.WindowBounds.Y + $layout.WindowBounds.Height) -le ($hostFixture.WorkingArea.Y + $hostFixture.WorkingArea.Height)) "$boundedCase 超出工作区下边界。"
-            Assert-Condition (($layout.WindowBounds.X + $layout.CapsuleBounds.X + $layout.CapsuleBounds.Width) -le ($hostFixture.CaptionButtonBounds.X - 8)) "$boundedCase 胶囊越过标题栏安全边界。"
+            Assert-Condition ($layout.WindowBounds.X -ge $hostFixture.WorkingArea.X -and $layout.WindowBounds.Y -ge $hostFixture.WorkingArea.Y) "$boundedCase выходит за верхнюю левую границу рабочей области."
+            Assert-Condition (($layout.WindowBounds.X + $layout.WindowBounds.Width) -le ($hostFixture.WorkingArea.X + $hostFixture.WorkingArea.Width)) "$boundedCase выходит за правую границу рабочей области."
+            Assert-Condition (($layout.WindowBounds.Y + $layout.WindowBounds.Height) -le ($hostFixture.WorkingArea.Y + $hostFixture.WorkingArea.Height)) "$boundedCase выходит за нижнюю границу рабочей области."
+            Assert-Condition (($layout.WindowBounds.X + $layout.CapsuleBounds.X + $layout.CapsuleBounds.Width) -le ($hostFixture.CaptionButtonBounds.X - 8)) "$boundedCase Капсула пересекла границу безопасности строки заголовка."
         }
 
         $autoCompressedDown = (Get-ProbeCase $response 'auto-compressed-down').Layout
-        Assert-Condition ($autoCompressedDown.State -eq 1 -and $autoCompressedDown.ExpansionDirection -eq 0 -and $autoCompressedDown.ExpandedRowHeight -eq 24) 'Auto 应选择可容纳 24 DIP 压缩行的下方，而不是选择无法容纳最小面板的上方。'
+        Assert-Condition ($autoCompressedDown.State -eq 1 -and $autoCompressedDown.ExpansionDirection -eq 0 -and $autoCompressedDown.ExpandedRowHeight -eq 24) 'В режиме «Авто» следует выбирать нижнюю часть, которая может вместить 24 строки сжатия DIP, а не верхнюю, которая не может вместить самую маленькую панель.'
         $autoInsideUp = (Get-ProbeCase $response 'auto-inside-up').Layout
-        Assert-Condition ($autoInsideUp.State -eq 1 -and $autoInsideUp.ExpansionDirection -eq 1 -and $autoInsideUp.ExpandedRowHeight -eq 30) 'Auto 回退到窗口内坐标后仍应按可用空间向上展开。'
+        Assert-Condition ($autoInsideUp.State -eq 1 -and $autoInsideUp.ExpansionDirection -eq 1 -and $autoInsideUp.ExpandedRowHeight -eq 30) 'После того, как Auto вернется к координатам в окне, оно все равно должно расширяться вверх в соответствии с доступным пространством.'
 
         $title34 = (Get-ProbeCase $response 'title-fit-caption-34').Layout
-        Assert-Condition ($title34.State -eq 0 -and $title34.ScalePercent -eq 101 -and $title34.CollapsedDisplay -eq 0) '34px 标题栏有效比例必须保持 101%。'
-        Assert-Rect $title34.WindowBounds 800 0 242 34 '34px 标题栏应使用 101% 下的 240 DIP 宽度。'
+        Assert-Condition ($title34.State -eq 0 -and $title34.ScalePercent -eq 101 -and $title34.CollapsedDisplay -eq 0) 'Эффективная пропорция строки заголовка размером 34 пикселя должна поддерживаться на уровне 101%.'
+        Assert-Rect $title34.WindowBounds 775 0 267 34 'Строка заголовка высотой 34 пикселя должна вмещать капсулу шириной 267 DIP при масштабе 101%.'
 
         $title32 = (Get-ProbeCase $response 'title-fit-caption-32').Layout
-        Assert-Condition ($title32.State -eq 0 -and $title32.ScalePercent -eq 95 -and $title32.CollapsedDisplay -eq 0) '32px 标题栏必须选择可完整容纳双字段的最大 95% 比例。'
-        Assert-Rect $title32.WindowBounds 814 0 228 32 '32px 标题栏几何不正确。'
+        Assert-Condition ($title32.State -eq 0 -and $title32.ScalePercent -eq 95 -and $title32.CollapsedDisplay -eq 0) 'Необходимо выбрать строку заголовка размером 32 пикселя, чтобы полностью разместить двойное поле с максимальным соотношением 95 %.'
+        Assert-Rect $title32.WindowBounds 791 0 251 32 'Неверная геометрия заголовка размером 32 пикселя.'
 
         $title20 = (Get-ProbeCase $response 'title-fit-caption-20').Layout
-        Assert-Condition ($title20.State -eq 0 -and $title20.ScalePercent -eq 60 -and $title20.CollapsedDisplay -eq 0) '20px 标题栏必须在最小 60% 比例完整显示双字段。'
-        Assert-Rect $title20.WindowBounds 898 0 144 20 '20px 标题栏几何不正确。'
+        Assert-Condition ($title20.State -eq 0 -and $title20.ScalePercent -eq 60 -and $title20.CollapsedDisplay -eq 0) 'Строка заголовка размером 20 пикселей должна полностью отображать двойное поле с соотношением минимум 60%.'
+        Assert-Rect $title20.WindowBounds 884 0 158 20 'Неверная геометрия заголовка размером 20 пикселей.'
 
         $title19 = (Get-ProbeCase $response 'title-fit-caption-19-hidden').Layout
-        Assert-Condition ($title19.State -eq 2) '19px 标题栏仍必须隐藏。'
-        Assert-Rect $title19.WindowBounds 0 0 0 0 '无安全标题栏比例时不得生成客户区内右上矩形。'
+        Assert-Condition ($title19.State -eq 2) 'Строка заголовка размером 19 пикселей по-прежнему должна быть скрыта.'
+        Assert-Rect $title19.WindowBounds 0 0 0 0 'Верхний правый прямоугольник в клиентской области не может быть создан, если нет безопасного соотношения сторон заголовка.'
 
         $title46 = (Get-ProbeCase $response 'title-fit-caption-46').Layout
-        Assert-Condition ($title46.State -eq 0 -and $title46.ScalePercent -eq 130 -and $title46.CollapsedDisplay -eq 0) '46px 标题栏必须保留请求的 130% 双字段比例。'
-        Assert-Rect $title46.WindowBounds 730 1 312 44 '130% 标题栏几何不正确。'
+        Assert-Condition ($title46.State -eq 0 -and $title46.ScalePercent -eq 130 -and $title46.CollapsedDisplay -eq 0) 'Строка заголовка размером 46 пикселей должна сохранять требуемое соотношение двойных полей 130%.'
+        Assert-Rect $title46.WindowBounds 699 1 343 44 '130% Неправильная геометрия строки заголовка.'
 
         $titlePrimary = (Get-ProbeCase $response 'title-fit-primary-150').Layout
-        Assert-Condition ($titlePrimary.State -eq 0 -and $titlePrimary.ScalePercent -eq 129 -and $titlePrimary.CollapsedDisplay -eq 1) '150px 必须保持 129% 单字段回退。'
-        Assert-Rect $titlePrimary.WindowBounds 160 1 150 44 '150px 单字段边界不得改变。'
+        Assert-Condition ($titlePrimary.State -eq 0 -and $titlePrimary.ScalePercent -eq 117 -and $titlePrimary.CollapsedDisplay -eq 1) 'При ширине 150 пикселей резервный режим одного поля должен достигать масштаба 117%.'
+        Assert-Rect $titlePrimary.WindowBounds 160 3 150 40 'Границу одного поля размером 150 пикселей изменять нельзя.'
 
         $titleLow = (Get-ProbeCase $response 'title-fit-scale-low').Layout
-        Assert-Condition ($titleLow.ScalePercent -eq 60) '标题栏请求比例 20% 必须先清理为 60%。'
+        Assert-Condition ($titleLow.ScalePercent -eq 60) 'Сначала коэффициент запроса строки заголовка 20 % необходимо очистить до 60 %.'
         $titleHigh = (Get-ProbeCase $response 'title-fit-scale-high').Layout
-        Assert-Condition ($titleHigh.ScalePercent -eq 130) '标题栏请求比例 999% 必须从 130% 开始搜索。'
-        Assert-Condition ($title34.ScalePercent -eq 101 -and $title46.ScalePercent -eq 130) '标题栏空间恢复后必须重新使用未被改写的 130% 请求比例。'
+        Assert-Condition ($titleHigh.ScalePercent -eq 130) 'Коэффициент запроса строки заголовка 999 %, поиск следует начинать со 130 %.'
+        Assert-Condition ($title34.ScalePercent -eq 101 -and $title46.ScalePercent -eq 130) 'Неперезаписанное соотношение запросов 130 % необходимо повторно использовать после восстановления пространства в строке заголовка.'
 
         $titleExpanded = (Get-ProbeCase $response 'title-fit-expanded-caption-34').Layout
-        Assert-Condition ($titleExpanded.State -eq 1 -and $titleExpanded.ScalePercent -eq 101 -and $titleExpanded.ExpandedRowHeight -eq 30) '34px 标题栏展开布局必须全程使用 101% 有效比例。'
-        Assert-Rect $titleExpanded.WindowBounds 769 0 273 283 '101% 展开窗口矩形不正确。'
-        Assert-Rect $titleExpanded.CapsuleBounds 31 0 242 34 '101% 展开胶囊客户区矩形不正确。'
-        Assert-Rect $titleExpanded.PanelBounds 0 40 273 243 '101% 展开面板矩形不正确。'
+        Assert-Condition ($titleExpanded.State -eq 1 -and $titleExpanded.ScalePercent -eq 101 -and $titleExpanded.ExpandedRowHeight -eq 30) 'В макете расширения заголовка размером 34 пикселя должно использоваться эффективное соотношение 101 %.'
+        Assert-Rect $titleExpanded.WindowBounds 739 0 303 283 '101% Неправильный прямоугольник развернутого окна.'
+        Assert-Rect $titleExpanded.CapsuleBounds 36 0 267 34 '101% Неправильный прямоугольник расширенной клиентской области капсулы.'
+        Assert-Rect $titleExpanded.PanelBounds 0 40 303 243 '101% Неправильный прямоугольник развернутой панели.'
 
         $layoutAssembly = [System.Reflection.Assembly]::LoadFrom($applicationDll)
         $renderMetricsType = $layoutAssembly.GetType('CodexTokenOverlay.OverlayRenderMetrics', $true)
         $createRenderMetrics = $renderMetricsType.GetMethod('Create', [System.Reflection.BindingFlags]'Public, Static')
         $titleRenderMetrics = $createRenderMetrics.Invoke($null, [object[]]@([uint32]96, [int]$titleExpanded.ScalePercent))
         Assert-Condition `
-            ($titleRenderMetrics.LabelFontPoints -eq 10.1 -and $titleRenderMetrics.CompactValueFontPoints -eq 12.12 -and $titleRenderMetrics.CapsuleRadius -eq 10 -and $titleRenderMetrics.HorizontalPadding -eq 10) `
-            '标题栏绘制指标必须来自布局返回的 101% 有效比例。'
+            ($titleRenderMetrics.LabelFontPoints -eq 9.09 -and $titleRenderMetrics.CompactValueFontPoints -eq 11.11 -and $titleRenderMetrics.CapsuleRadius -eq 10 -and $titleRenderMetrics.HorizontalPadding -eq 10) `
+            'Показатели отображения заголовка должны быть взяты из 101% допустимого масштаба, возвращаемого макетом.'
 
         $metrics = $createRenderMetrics.Invoke($null, [object[]]@([uint32]96, [int]100))
         Add-Type -AssemblyName System.Windows.Forms
@@ -2476,19 +2476,19 @@ try {
                 [single]$metrics.CompactValueFontPoints,
                 [System.Drawing.FontStyle]::Regular,
                 [System.Drawing.GraphicsUnit]::Point)
-            Assert-Condition ($labelFont.Name -eq 'Segoe UI') '真实字体测量必须解析到 Segoe UI。'
-            Assert-Condition ($valueFont.Name -eq 'Segoe UI Semibold') '真实字体测量必须解析到 Segoe UI Semibold。'
+            Assert-Condition ($labelFont.Name -eq 'Segoe UI') 'Реальные размеры шрифта необходимо анализировать в пользовательском интерфейсе Segoe.'
+            Assert-Condition ($valueFont.Name -eq 'Segoe UI Semibold') 'Реальные размеры шрифта должны быть преобразованы в Segoe UI Semibold.'
             $measureFlags = [System.Windows.Forms.TextFormatFlags]::NoPadding -bor [System.Windows.Forms.TextFormatFlags]::SingleLine
             $totalLabelWidth = [System.Windows.Forms.TextRenderer]::MeasureText(
-                $graphics, '总', $labelFont, [System.Drawing.Size]::Empty, $measureFlags).Width
+                $graphics, 'Всего', $labelFont, [System.Drawing.Size]::Empty, $measureFlags).Width
             $totalValueWidth = [System.Windows.Forms.TextRenderer]::MeasureText(
                 $graphics, '163.45M', $valueFont, [System.Drawing.Size]::Empty, $measureFlags).Width
             $hitLabelWidth = [System.Windows.Forms.TextRenderer]::MeasureText(
-                $graphics, '命中率', $labelFont, [System.Drawing.Size]::Empty, $measureFlags).Width
+                $graphics, 'Кэш %', $labelFont, [System.Drawing.Size]::Empty, $measureFlags).Width
             $hitValueWidth = [System.Windows.Forms.TextRenderer]::MeasureText(
                 $graphics, '38%', $valueFont, [System.Drawing.Size]::Empty, $measureFlags).Width
 
-            $capsuleWidth = 240
+            $capsuleWidth = 264
             $contentWidth = $capsuleWidth - (2 * $metrics.HorizontalPadding)
             $columnWidth = [math]::Floor($contentWidth / 2) - $metrics.MetricGap
             $totalRequired = $totalLabelWidth + $metrics.CompactMetricGap + $totalValueWidth
@@ -2496,17 +2496,17 @@ try {
             $totalMargin = $columnWidth - $totalRequired
             $hitMargin = $columnWidth - $hitRequired
 
-            Write-Host "字体可读性测量：240px column=$columnWidth totalRequired=$totalRequired totalMargin=$totalMargin hitRequired=$hitRequired hitMargin=$hitMargin minimumMargin=$($metrics.CompactMetricGap)"
-            Assert-Condition ($totalMargin -ge $metrics.CompactMetricGap) '240 DIP 必须完整容纳“总 163.45M”并保留一个紧凑指标间距。'
-            Assert-Condition ($hitMargin -ge $metrics.CompactMetricGap) '240 DIP 必须完整容纳“命中率 38%”并保留一个紧凑指标间距。'
+            Write-Host "Измерение читаемости шрифта: капсула 264 DIP, столбец = $columnWidth totalRequired = $totalRequired totalMargin = $totalMargin hitRequired = $hitRequired hitMargin = $hitMargin минимальное поле = $($metrics.CompactMetricGap)"
+            Assert-Condition ($totalMargin -ge $metrics.CompactMetricGap) 'Капсула 264 DIP должна вмещать подпись «Всего» и значение 163.45M с минимальным интервалом между колонками.'
+            Assert-Condition ($hitMargin -ge $metrics.CompactMetricGap) 'Капсула 264 DIP должна вмещать подпись «Кэш %» и значение 38% с минимальным интервалом между колонками.'
 
             $oldContentWidth = 196 - (2 * $metrics.HorizontalPadding)
             $oldColumnWidth = [math]::Floor($oldContentWidth / 2) - $metrics.MetricGap
             $oldTotalMargin = $oldColumnWidth - $totalRequired
-            Write-Host "字体负控测量：196px column=$oldColumnWidth totalRequired=$totalRequired totalMargin=$oldTotalMargin minimumMargin=$($metrics.CompactMetricGap)"
+            Write-Host "Отрицательная проверка читаемости при ширине 196 DIP: столбец = $oldColumnWidth totalRequired = $totalRequired totalMargin = $oldTotalMargin минимальное поле = $($metrics.CompactMetricGap)"
             Assert-Condition `
                 ($oldTotalMargin -lt $metrics.CompactMetricGap) `
-                '旧 196px 宽度负控不得为“总 163.45M”保留一个紧凑指标间距的可读余量。'
+                'При ширине 196 DIP подпись «Всего» и значение 163.45M должны оставлять меньше минимального интервала.'
         }
         finally {
             if ($null -ne $valueFont) { $valueFont.Dispose() }
@@ -2523,36 +2523,36 @@ try {
         $onPaint = $formType.GetMethod('OnPaint', [System.Reflection.BindingFlags]'NonPublic, Instance')
         Assert-Condition `
             (Test-MethodCallChain $applyLayout @($dpiGetter, $scaleGetter, $createRenderMetrics)) `
-            'TokenStripForm.ApplyLayout 必须把布局结果的有效比例传给区域绘制指标。'
+            'TokenStripForm.ApplyLayout должен передавать эффективную пропорцию результата макета в индикатор рисования области.'
         Assert-Condition `
             (Test-MethodCallChain $onPaint @($dpiGetter, $scaleGetter, $createRenderMetrics)) `
-            'TokenStripForm.OnPaint 必须把布局结果的有效比例传给实际绘制指标。'
-        Assert-Condition ((Get-ProbeCase $response 'fallback-caption').Layout.State -ne 2) '缺失标题按钮时有效回退指标应继续布局。'
+            'TokenStripForm.OnPaint должен передавать эффективную пропорцию результата макета к фактическому индикатору рисования.'
+        Assert-Condition ((Get-ProbeCase $response 'fallback-caption').Layout.State -ne 2) 'Действительные резервные индикаторы должны продолжать макет, даже если кнопка заголовка отсутствует.'
         $fallbackClipped = (Get-ProbeCase $response 'fallback-caption-clipped').Layout
-        Assert-Condition ($fallbackClipped.State -eq 0 -and $fallbackClipped.ScalePercent -eq 83 -and $fallbackClipped.CapsuleBounds.Height -eq 28) '回退标题区域裁切为 28px 时必须选择完整适配的最大 83% 比例。'
-        Assert-Rect $fallbackClipped.WindowBounds 831 0 199 28 '回退标题区域裁切后的最大适配矩形不正确。'
-        Assert-Rect $fallbackClipped.CapsuleBounds 0 0 199 28 '回退标题区域裁切后必须使用 240 DIP 标题栏宽度。'
-        Assert-Condition ((Get-ProbeCase $response 'fallback-caption-192').Layout.CapsuleBounds.Height -eq 68) '高 DPI 回退指标不应被重复缩放。'
-        Assert-Condition ((Get-ProbeCase $response 'invalid-fallback').Layout.State -eq 2) '无效标题按钮和不可用回退指标必须隐藏。'
+        Assert-Condition ($fallbackClipped.State -eq 0 -and $fallbackClipped.ScalePercent -eq 83 -and $fallbackClipped.CapsuleBounds.Height -eq 28) 'Если резервная область заголовка обрезана до 28 пикселей, необходимо выбрать максимальный масштаб 83 % для полного соответствия.'
+        Assert-Rect $fallbackClipped.WindowBounds 811 0 219 28 'Неправильный максимальный размер прямоугольника после обрезки резервной области заголовка.'
+        Assert-Rect $fallbackClipped.CapsuleBounds 0 0 219 28 'При обрезке резервной области ширина капсулы должна соответствовать доступной ширине.'
+        Assert-Condition ((Get-ProbeCase $response 'fallback-caption-192').Layout.CapsuleBounds.Height -eq 68) 'Резервные метрики с высоким разрешением не следует масштабировать.'
+        Assert-Condition ((Get-ProbeCase $response 'invalid-fallback').Layout.State -eq 2) 'Недопустимая кнопка заголовка и индикатор недоступности резервного варианта должны быть скрыты.'
 
-        Assert-Condition ((Get-ProbeCase $response 'dpi0-title').Layout.State -eq 2) 'Dpi=0 时标题栏锚点必须隐藏。'
+        Assert-Condition ((Get-ProbeCase $response 'dpi0-title').Layout.State -eq 2) 'Привязка строки заголовка должна быть скрыта, если Dpi=0.'
         foreach ($legacyCase in @('dpi0-auto', 'dpi0-inside-top', 'dpi0-inside-bottom')) {
-            Assert-Condition ((Get-ProbeCase $response $legacyCase).Layout.State -ne 2) "Dpi=0 不应隐藏旧锚点：$legacyCase"
+            Assert-Condition ((Get-ProbeCase $response $legacyCase).Layout.State -ne 2) "Dpi=0 не должен скрывать старые точки привязки: $legacyCase"
         }
-        Assert-Condition ((Get-ProbeCase $response 'inside-top-expanded').Layout.ExpansionDirection -eq 0) 'InsideTopRight 必须向下展开。'
-        Assert-Condition ((Get-ProbeCase $response 'inside-top-expanded').Layout.CapsuleBounds.Width -eq 196) '旧锚点双字段宽度不得改变。'
-        Assert-Condition ((Get-ProbeCase $response 'inside-bottom-expanded').Layout.ExpansionDirection -eq 1) 'InsideBottomRight 必须向上展开。'
+        Assert-Condition ((Get-ProbeCase $response 'inside-top-expanded').Layout.ExpansionDirection -eq 0) 'InsideTopRight необходимо развернуть вниз.'
+        Assert-Condition ((Get-ProbeCase $response 'inside-top-expanded').Layout.CapsuleBounds.Width -eq 232) 'Старую ширину двойного поля привязки изменять нельзя.'
+        Assert-Condition ((Get-ProbeCase $response 'inside-bottom-expanded').Layout.ExpansionDirection -eq 1) 'InsideBottomRight необходимо развернуть вверх.'
 
         $compressed = (Get-ProbeCase $response 'compressed-rows').Layout
-        Assert-Condition ($compressed.State -eq 1 -and $compressed.ExpandedRowHeight -eq 29) '空间不足时行高应从 30 DIP 降至可容纳值。'
+        Assert-Condition ($compressed.State -eq 1 -and $compressed.ExpandedRowHeight -eq 29) 'Высоту ряда следует уменьшить с 30 DIP, чтобы приспособиться к ситуации, когда места недостаточно.'
         $tooShort = (Get-ProbeCase $response 'insufficient-height').Layout
-        Assert-Condition ($tooShort.State -eq 0 -and $tooShort.ExpandedRowHeight -eq 0) '不足 24 DIP 行高时请求应保持收起。'
+        Assert-Condition ($tooShort.State -eq 0 -and $tooShort.ExpandedRowHeight -eq 0) 'Запросы должны оставаться закрытыми, если высокий уровень менее 24 строк DIP.'
 
-        Assert-Condition ((Get-ProbeCase $response 'auto-right').Layout.WindowBounds.X -eq 1010) 'Auto 未优先选择窗口外右侧。'
-        Assert-Condition ((Get-ProbeCase $response 'auto-left').Layout.WindowBounds.X -eq 714) 'Auto 右侧不足时未选择窗口外左侧。'
-        Assert-Condition ((Get-ProbeCase $response 'auto-inside').Layout.WindowBounds.X -eq 1646) 'Auto 两侧不足时未回退 InsideTopRight。'
-        Assert-Condition ((Get-ProbeCase $response 'auto-down').Layout.ExpansionDirection -eq 0) 'Auto 在下方空间充足时未向下展开。'
-        Assert-Condition ((Get-ProbeCase $response 'auto-up').Layout.ExpansionDirection -eq 1) 'Auto 在下方不足且上方充足时未向上展开。'
+        Assert-Condition ((Get-ProbeCase $response 'auto-right').Layout.WindowBounds.X -eq 1010) 'В режиме «Авто» приоритетом не является правая сторона за окном.'
+        Assert-Condition ((Get-ProbeCase $response 'auto-left').Layout.WindowBounds.X -eq 678) 'Авто Левая сторона за окном не выбирается, когда правой стороны недостаточно.'
+        Assert-Condition ((Get-ProbeCase $response 'auto-inside').Layout.WindowBounds.X -eq 1610) 'Auto не переключается на InsideTopRight, когда обе стороны недостаточны.'
+        Assert-Condition ((Get-ProbeCase $response 'auto-down').Layout.ExpansionDirection -eq 0) 'Автоматически не разворачивается вниз, если внизу достаточно места.'
+        Assert-Condition ((Get-ProbeCase $response 'auto-up').Layout.ExpansionDirection -eq 1) 'Автоматическое развертывание вверх не происходит, если нижней части недостаточно, а верхней части достаточно.'
     }
 
     if ($areas -contains 'Interaction') {
@@ -2768,10 +2768,10 @@ try {
         Assert-InteractionTrace (Get-ProbeCase $response 'outside-middle-edge-collapses') @($expandedWaiting, $expanded, $collapsed)
         Assert-InteractionTrace (Get-ProbeCase $response 'held-button-does-not-repeat-edge') @($expandedWaiting, $expanded, $expanded, $expanded, $expanded, $collapsed)
         $anchorState = Invoke-AnchorStateReflectionProbe
-        Assert-Condition $anchorState.HasMainOnlyObserveMethod '锚点状态必须只公开 host 句柄和参考点的 ObserveAndCollapse 接口。'
-        Assert-Condition (-not $anchorState.BoundsOnlyMovementStaysExpanded) '仅矩形移动不得改变锚点身份或收起。'
-        Assert-Condition $anchorState.HostHandleChangeCollapses 'host 句柄变化必须收起。'
-        Assert-Condition $anchorState.ReferencePointChangeCollapses '参考点变化必须收起。'
+        Assert-Condition $anchorState.HasMainOnlyObserveMethod 'Состояние привязки должно предоставлять только дескриптор хоста и интерфейс ObserveAndCollapse опорной точки.'
+        Assert-Condition (-not $anchorState.BoundsOnlyMovementStaysExpanded) 'Одно только прямоугольное перемещение не должно изменять идентичность якоря или разрушаться.'
+        Assert-Condition $anchorState.HostHandleChangeCollapses 'Изменения дескриптора хоста должны быть закрыты.'
+        Assert-Condition $anchorState.ReferencePointChangeCollapses 'Изменения контрольной точки должны быть закрыты.'
         Assert-InteractionTrace (Get-ProbeCase $response 'pinned-monitor-route-thread-change-collapses') @($expandedWaiting, $expanded, $expanded, $expanded, $collapsed)
         Assert-InteractionTrace (Get-ProbeCase $response 'route-metadata-only-change-stays-expanded') @($expandedWaiting, $expanded, $expanded, $expanded)
         Assert-InteractionTrace (Get-ProbeCase $response 'first-route-thread-baseline-stays-expanded') @($expandedWaiting, $expanded, $expanded, $expanded)
@@ -2813,15 +2813,15 @@ try {
         )
 
         $foregroundHost = Get-ProbeCase $response 'foreground-host'
-        Assert-Condition ($foregroundHost.HostHandle -eq 100) '前景为主窗口时必须选择同进程主窗口。'
+        Assert-Condition ($foregroundHost.HostHandle -eq 100) 'Если на переднем плане находится главное окно, необходимо выбрать то же главное окно процесса.'
         $foregroundTool = Get-ProbeCase $response 'foreground-tool'
-        Assert-Condition ($foregroundTool.HostHandle -eq 100) '前景为同进程工具/分层窗口时仍必须定位主窗口，且工具窗口不得成为返回目标。'
+        Assert-Condition ($foregroundTool.HostHandle -eq 100) 'Если передний план представляет собой инструмент/многослойное окно того же процесса, главное окно все равно должно быть расположено, а окно инструмента не должно быть целью возврата.'
         $nonCodexForeground = Get-ProbeCase $response 'foreground-non-codex'
-        Assert-Condition ($null -eq $nonCodexForeground.HostHandle) '非 Codex 前景窗口不得产生选择结果。'
+        Assert-Condition ($null -eq $nonCodexForeground.HostHandle) 'Окна переднего плана, не относящиеся к Codex, не должны выдавать результаты выбора.'
         $tieBreaker = Get-ProbeCase $response 'largest-host-and-lowest-handle-tie'
-        Assert-Condition ($tieBreaker.HostHandle -eq 110) '主窗口必须优先选择最大面积，并以最小句柄打破面积并列。'
+        Assert-Condition ($tieBreaker.HostHandle -eq 110) 'Главное окно должно отдавать приоритет самой большой области и использовать самый маленький дескриптор, чтобы разорвать привязку областей.'
         $invalidNormal = Get-ProbeCase $response 'invalid-normal-candidates'
-        Assert-Condition ($invalidNormal.HostHandle -eq 100) '隐藏、最小化、有所有者、过小、工具/分层或错误类名的候选不得成为主窗口。'
+        Assert-Condition ($invalidNormal.HostHandle -eq 100) 'Кандидаты на скрытые, свернутые, принадлежащие, слишком маленькие, инструментальные/многоуровневые или неправильные имена классов не должны становиться главным окном.'
 
         $surfaceContract = Invoke-HostSurfaceContractReflectionProbe
         $classificationFieldsAreHostOnly = (@($foregroundHost.PSObject.Properties.Name | Sort-Object) -join ',') -eq 'HostHandle,Name'
@@ -2840,25 +2840,25 @@ try {
             ($null -eq $surfaceContract.EmptyAfterIgnoredOverlay)
         Assert-Condition `
             ([string]::IsNullOrEmpty($surfaceContract.Error) -and $classificationFieldsAreHostOnly -and $selectionTypeIsHostOnly -and $targetTypeIsHostOnly -and $diagnosticFieldsAreHostOnly -and $surfaceContract.HasKnownHostMethod -and $zOrderCasesAvailable) `
-            "主窗口表面契约必须为 host-only，并由第一个未忽略的完整矩形顶层窗口阻断穿透。actual=$($surfaceContract | ConvertTo-Json -Compress -Depth 8)"
+            "Контракт поверхности главного окна должен быть только для хоста, при этом проникновение блокируется первым неигнорируемым полностью прямоугольным окном верхнего уровня. actual=$($surfaceContract | ConvertTo-Json -Compress -Depth 8)"
         Assert-Condition $surfaceContract.OwnShadowBeforeHostIsKnownHost `
-            '状态条进程的 SysShadow 必须被跳过并命中 Codex 主窗口。'
+            'SysShadow процесса строки состояния необходимо пропустить и перейти в главное окно Codex.'
         Assert-Condition $surfaceContract.HasCurrentProcessWrapper `
-            '必须存在由生产命中链使用的当前进程包装器。'
+            'Метод получения идентификатора текущего процесса должен быть доступен.'
         Assert-Condition (-not $surfaceContract.ForeignShadowBeforeHostIsKnownHost) `
-            '其他进程的同形阴影窗口必须继续阻断。'
+            'Изоморфные теневые окна других процессов должны продолжать блокироваться.'
         Assert-Condition (-not $surfaceContract.CodexNonHostBeforeHostIsKnownHost) `
-            'Codex 非主窗口必须继续阻断，不能恢复宠物吸附。'
+            'Неосновные окна Codex должны оставаться заблокированными, и привязка домашних животных не может быть восстановлена.'
         Assert-Condition $surfaceContract.OwnUnreadableBeforeHostIsKnownHost `
-            '状态条进程的 unreadable 辅助窗口必须在 fail-closed 前跳过。'
+            'Перед аварийным закрытием необходимо пропустить нечитаемое вспомогательное окно процесса строки состояния.'
         Assert-Condition (-not $surfaceContract.ForeignUnreadableBeforeHostIsKnownHost) `
-            '其他进程的 unreadable 可见窗口必须继续 fail closed。'
+            'Нечитаемые видимые окна других процессов должны оставаться закрытыми при сбое.'
         Assert-Condition (-not $surfaceContract.DestroyedForeignBeforeHostIsKnownHost) `
-            '其他进程读取中销毁的候选必须继续 fail closed。'
+            'Кандидаты, уничтоженные во время чтения другими процессами, должны по-прежнему не закрываться.'
         Assert-Condition (-not $surfaceContract.ZeroIgnoredProcessDoesNotSkip) `
-            'ignoredProcessId=0 不得按进程穿透候选。'
+            'ignoreProcessId=0 Процесс не может проникнуть в кандидатов.'
         Assert-Condition $surfaceContract.ExplicitHandleStillSkippedWithZeroProcess `
-            'ignoredProcessId=0 时显式忽略句柄仍必须生效。'
+            'Явное игнорирование дескриптора должно по-прежнему действовать, если ignoreProcessId=0.'
         $windowAssembly = [System.Reflection.Assembly]::LoadFrom($applicationDll)
         $windowLocatorType = $windowAssembly.GetType('CodexTokenOverlay.CodexWindowLocator', $true)
         $windowStaticFlags = [System.Reflection.BindingFlags]'Public, NonPublic, Static'
@@ -2873,28 +2873,28 @@ try {
                 4)
         Assert-Condition `
             ($surfaceContract.HasCurrentProcessWrapper -and $surfaceContract.OwnShadowBeforeHostIsKnownHost -and $productionPidWiring) `
-            '生产命中链必须调用经动态子进程 PID 行为验证的当前进程包装器。'
+            'Проверка попадания курсора должна получать идентификатор текущего процесса во время выполнения.'
         Assert-Condition `
             (($null -ne $surfaceContract.VisibleInvalidBeforeHostIsKnownHost) -and (-not $surfaceContract.VisibleInvalidBeforeHostIsKnownHost) -and ($null -ne $surfaceContract.DestroyedDuringReadBeforeHostIsKnownHost) -and (-not $surfaceContract.DestroyedDuringReadBeforeHostIsKnownHost) -and $surfaceContract.RecoveredAfterCompleteReadsIsKnownHost -and $surfaceContract.InactiveInvalidBeforeHostIsKnownHost) `
-            "可见表面矩形读取失败必须 fail closed；下一次完整读取以及 ignored/不可见/最小化失败不得永久阻断恢复。actual=$($surfaceContract | ConvertTo-Json -Compress -Depth 8)"
+            "Видимые прямоугольные поверхности сбоев считывания должны быть закрыты при сбое; следующее полное чтение и игнорируемые/невидимые/минимизированные сбои не должны навсегда блокировать восстановление. actual=$($surfaceContract | ConvertTo-Json -Compress -Depth 8)"
 
         $dpiAwareness = Invoke-WindowDpiAwarenessReflectionProbe
         Assert-Condition `
             ($dpiAwareness.DpiMode -eq 'PerMonitorV2') `
-            "窗口探针必须在读取窗口指标前建立 PerMonitorV2 awareness。actual=$($dpiAwareness.DpiMode)"
+            "Датчики окон должны установить осведомленность о PerMonitorV2, прежде чем считывать индикаторы окон. фактическое=$($dpiAwareness.DpiMode)"
 
         $knownRefresh = Invoke-KnownTargetRefreshReflectionProbe
-        Assert-Condition $knownRefresh.RefreshWhileOverlayForeground.Success '已知目标刷新不得依赖当前前景窗口。'
-        Assert-Condition ($knownRefresh.RefreshWhileOverlayForeground.HostHandle -eq 100) '已知目标刷新必须保持原 Codex 进程并返回当前主窗口。'
-        Assert-Rect $knownRefresh.RefreshWhileOverlayForeground.HostBounds 40 60 1500 1000 '已知目标刷新必须返回主窗口最新矩形。'
-        Assert-Condition (-not $knownRefresh.RejectProcessChange.Success) '已知目标刷新必须拒绝进程变化。'
-        Assert-Condition (-not $knownRefresh.DestroyedHostFailsClosed.Success) '已销毁的原主窗口必须 fail closed。'
-        Assert-Condition (-not $knownRefresh.ClassReadFailureAccepted) 'GetClassName 失败的候选必须 fail closed。'
-        Assert-Condition (-not $knownRefresh.StyleReadFailureAccepted) '扩展样式读取报错的候选必须 fail closed。'
-        Assert-Condition $knownRefresh.ZeroStyleWithoutErrorAccepted '扩展样式为零但无 Win32 错误时必须视为有效读取。'
-        Assert-Condition $knownRefresh.SameConfirmedIdentityAccepted '相同确认 host+PID 必须允许已知目标刷新。'
-        Assert-Condition (-not $knownRefresh.ReusedHandleDifferentProcessAccepted) '被其他进程复用的同 HWND 必须拒绝刷新。'
-        Assert-Condition (-not $knownRefresh.DifferentHostSameProcessAccepted) '同进程但不同 host HWND 必须拒绝刷新。'
+        Assert-Condition $knownRefresh.RefreshWhileOverlayForeground.Success 'Известно, что целевое обновление не должно зависеть от текущего окна переднего плана.'
+        Assert-Condition ($knownRefresh.RefreshWhileOverlayForeground.HostHandle -eq 100) 'Известно, что целевое обновление должно сохранять исходный процесс Codex и возвращаться в текущее главное окно.'
+        Assert-Rect $knownRefresh.RefreshWhileOverlayForeground.HostBounds 40 60 1500 1000 'Известно, что целевое обновление должно возвращать последний прямоугольник главного окна.'
+        Assert-Condition (-not $knownRefresh.RejectProcessChange.Success) 'Известно, что целевое обновление должно отклонять изменения процесса.'
+        Assert-Condition (-not $knownRefresh.DestroyedHostFailsClosed.Success) 'Уничтоженное исходное главное окно должно не закрываться.'
+        Assert-Condition (-not $knownRefresh.ClassReadFailureAccepted) 'Кандидаты, для которых не удалось выполнить GetClassName, должны закрыться с ошибкой.'
+        Assert-Condition (-not $knownRefresh.StyleReadFailureAccepted) 'Кандидаты на ошибки чтения в расширенном стиле должны закрываться с ошибкой.'
+        Assert-Condition $knownRefresh.ZeroStyleWithoutErrorAccepted 'Расширенный стиль, равный нулю, но без ошибок Win32, считается допустимым чтением.'
+        Assert-Condition $knownRefresh.SameConfirmedIdentityAccepted 'Тот же хост подтверждения + PID должен разрешать обновления известных целевых объектов.'
+        Assert-Condition (-not $knownRefresh.ReusedHandleDifferentProcessAccepted) 'Тот же HWND, который повторно используется другими процессами, не должен обновляться.'
+        Assert-Condition (-not $knownRefresh.DifferentHostSameProcessAccepted) 'Тот же процесс, но HWND другого хоста должен отказаться от обновления.'
     }
 
     if ($areas -contains 'Form') {
@@ -2949,124 +2949,124 @@ try {
         )
 
         $contract = Get-ProbeCase $form 'non-activating-window-contract'
-        Assert-Condition $contract.WsExToolWindowPresent 'TokenStripForm 必须设置 WS_EX_TOOLWINDOW。'
-        Assert-Condition $contract.WsExNoActivatePresent 'TokenStripForm 必须设置 WS_EX_NOACTIVATE。'
-        Assert-Condition (-not $contract.WsExTransparentPresent) 'TokenStripForm 不得设置 WS_EX_TRANSPARENT。'
-        Assert-Condition $contract.CsDropShadowPresent 'TokenStripForm 应请求 CS_DROPSHADOW。'
-        Assert-Condition ($contract.MouseActivateResult -eq 3) 'WM_MOUSEACTIVATE 必须返回 MA_NOACTIVATE。'
-        Assert-Condition ($contract.CapsuleCenterHitTest -ne -1) '胶囊中心不得返回 HTTRANSPARENT。'
-        Assert-Condition ($contract.PanelCenterHitTest -ne -1) '面板中心不得返回 HTTRANSPARENT。'
-        Assert-Condition ($contract.TopLeftHitTest -eq -1) 'L 形左上切角必须返回 HTTRANSPARENT。'
-        Assert-Rect $contract.CollapsedBounds 1400 100 196 34 '收起 ApplyLayout 必须匹配 WindowBounds。'
-        Assert-Rect $contract.ExpandedBounds 1326 100 270 304 '展开 ApplyLayout 必须原子应用 WindowBounds。'
-        Assert-Condition ($contract.ExpandedSetBoundsCoreDelta -eq 1) '展开 ApplyLayout 必须只产生一次 SetBoundsCore 调用。'
-        Assert-Condition $contract.ExpandedRegionMatchesUnion '展开 Region 必须匹配圆角胶囊与面板并集。'
-        Assert-Condition ($contract.NormalCapsuleClickCount -eq 1) '正常模式必须保留既有胶囊点击展开事件。'
-        Assert-Condition (-not $contract.NormalCommandIntercepted) '正常模式不得拦截 Enter 或 Esc。'
-        Assert-Condition (-not $contract.NormalRenderDecorations.ShowBorder) '普通模式不得绘制编辑边框。'
-        Assert-Condition (-not $contract.NormalRenderDecorations.ShowDragHint) '普通模式不得绘制拖动提示。'
-        Assert-Condition (-not $contract.NormalRenderDecorations.ShowResizeHandle) '普通模式不得绘制缩放手柄。'
-        Assert-Condition $contract.BeginEditRejectsExpanded '编辑模式必须拒绝非收起布局。'
-        Assert-Condition $contract.EditWsExToolWindowPresent '编辑模式仍必须设置 WS_EX_TOOLWINDOW。'
-        Assert-Condition (-not $contract.EditWsExNoActivatePresent) '编辑模式必须临时移除 WS_EX_NOACTIVATE。'
-        Assert-Condition ($contract.EditMouseActivateResult -ne 3) '编辑模式不得将 WM_MOUSEACTIVATE 强制返回 MA_NOACTIVATE。'
-        Assert-Condition $contract.EditIsCollapsed '编辑模式必须保持收起布局。'
-        Assert-Condition ($contract.EditCapsuleClickCount -eq 0) '编辑模式不得触发胶囊点击展开。'
-        Assert-Rect $contract.EditResizeHandle60 111 13 7 7 '60% 编辑缩放柄必须为右下角 7px。'
-        Assert-Rect $contract.EditResizeHandle100 184 22 12 12 '100% 编辑缩放柄必须为右下角 12px。'
-        Assert-Rect $contract.EditResizeHandle130 239 28 16 16 '130% 编辑缩放柄必须为右下角 16px。'
+        Assert-Condition $contract.WsExToolWindowPresent 'TokenStripForm должен установить WS_EX_TOOLWINDOW.'
+        Assert-Condition $contract.WsExNoActivatePresent 'TokenStripForm должен установить WS_EX_NOACTIVATE.'
+        Assert-Condition (-not $contract.WsExTransparentPresent) 'TokenStripForm не должен устанавливать WS_EX_TRANSPARENT.'
+        Assert-Condition $contract.CsDropShadowPresent 'TokenStripForm следует запрашивать CS_DROPSHADOW.'
+        Assert-Condition ($contract.MouseActivateResult -eq 3) 'WM_MOUSEACTIVATE должен возвращать MA_NOACTIVATE.'
+        Assert-Condition ($contract.CapsuleCenterHitTest -ne -1) 'Центры капсул не должны возвращать HTTRANSPARENT.'
+        Assert-Condition ($contract.PanelCenterHitTest -ne -1) 'Центр панели не должен возвращать значение HTTRANSPARENT.'
+        Assert-Condition ($contract.TopLeftHitTest -eq -1) 'L-образный верхний левый угол должен возвращать значение HTTRANSPARENT.'
+        Assert-Rect $contract.CollapsedBounds 1400 100 196 34 'Свернуть ApplyLayout должен соответствовать WindowBounds.'
+        Assert-Rect $contract.ExpandedBounds 1326 100 270 304 'При расширении ApplyLayout WindowBounds должен применяться атомарно.'
+        Assert-Condition ($contract.ExpandedSetBoundsCoreDelta -eq 1) 'При раскрытии ApplyLayout должен производиться только один вызов SetBoundsCore.'
+        Assert-Condition $contract.ExpandedRegionMatchesUnion 'Расширенная область должна соответствовать объединению закругленных капсул и панелей.'
+        Assert-Condition ($contract.NormalCapsuleClickCount -eq 1) 'В обычном режиме должно сохраняться существующее событие расширения щелчка капсулы.'
+        Assert-Condition (-not $contract.NormalCommandIntercepted) 'Обычный режим не должен блокировать Enter или Esc.'
+        Assert-Condition (-not $contract.NormalRenderDecorations.ShowBorder) 'В обычном режиме невозможно нарисовать границы редактирования.'
+        Assert-Condition (-not $contract.NormalRenderDecorations.ShowDragHint) 'В обычном режиме невозможно отрисовать подсказки при перетаскивании.'
+        Assert-Condition (-not $contract.NormalRenderDecorations.ShowResizeHandle) 'Маркеры масштабирования невозможно отрисовать в обычном режиме.'
+        Assert-Condition $contract.BeginEditRejectsExpanded 'Режим редактирования должен отклонять несвернутые макеты.'
+        Assert-Condition $contract.EditWsExToolWindowPresent 'В режиме редактирования по-прежнему должно быть установлено значение WS_EX_TOOLWINDOW.'
+        Assert-Condition (-not $contract.EditWsExNoActivatePresent) 'В режиме редактирования необходимо временно удалить WS_EX_NOACTIVATE.'
+        Assert-Condition ($contract.EditMouseActivateResult -ne 3) 'Режим редактирования не должен принудительно возвращать WM_MOUSEACTIVATE в MA_NOACTIVATE.'
+        Assert-Condition $contract.EditIsCollapsed 'В режиме редактирования должен сохраняться свернутый макет.'
+        Assert-Condition ($contract.EditCapsuleClickCount -eq 0) 'Режим редактирования не должен запускать расширение щелчка капсулы.'
+        Assert-Rect $contract.EditResizeHandle60 111 13 7 7 '60% Ручка масштабирования редактирования должна находиться на расстоянии 7 пикселей от правого нижнего угла.'
+        Assert-Rect $contract.EditResizeHandle100 184 22 12 12 'Маркер масштаба редактирования 100 % должен находиться на 12 пикселей ниже справа.'
+        Assert-Rect $contract.EditResizeHandle130 239 28 16 16 '130% Ручка масштабирования редактирования должна иметь размер 16 пикселей в правом нижнем углу.'
         foreach ($decoration in @($contract.EditRenderDecorations60, $contract.EditRenderDecorations100, $contract.EditRenderDecorations130)) {
-            Assert-Condition $decoration.ShowBorder '编辑模式必须绘制细边框。'
-            Assert-Condition $decoration.ShowDragHint '编辑模式必须绘制拖动提示。'
-            Assert-Condition $decoration.ShowResizeHandle '编辑模式必须绘制右下缩放手柄。'
-            Assert-Condition (-not [string]::IsNullOrWhiteSpace($decoration.DragHintText)) '编辑拖动提示不得为空。'
+            Assert-Condition $decoration.ShowBorder 'В режиме редактирования границы должны быть тонкими.'
+            Assert-Condition $decoration.ShowDragHint 'Подсказки для перетаскивания необходимо рисовать в режиме редактирования.'
+            Assert-Condition $decoration.ShowResizeHandle 'В режиме редактирования должен отображаться нижний правый маркер масштабирования.'
+            Assert-Condition (-not [string]::IsNullOrWhiteSpace($decoration.DragHintText)) 'Запрос на изменение перетаскивания не может быть пустым.'
         }
-        Assert-Rect $contract.EditRenderDecorations60.DragHintBounds 6 0 94 20 '60% 拖动提示布局必须随统一指标缩放。'
-        Assert-Rect $contract.EditRenderDecorations100.DragHintBounds 10 0 156 34 '100% 拖动提示布局必须使用胶囊内容区。'
-        Assert-Rect $contract.EditRenderDecorations130.DragHintBounds 13 0 203 44 '130% 拖动提示布局必须随统一指标缩放。'
+        Assert-Rect $contract.EditRenderDecorations60.DragHintBounds 6 0 94 20 '60% Макет подсказки о перетаскивании должен масштабироваться в соответствии с единым индикатором.'
+        Assert-Rect $contract.EditRenderDecorations100.DragHintBounds 10 0 156 34 'Макет приглашения на 100% перетаскивание должен использовать область содержимого капсулы.'
+        Assert-Rect $contract.EditRenderDecorations130.DragHintBounds 13 0 203 44 '130% Макет подсказки о перетаскивании должен масштабироваться в соответствии с унифицированным индикатором.'
         Assert-Condition `
-            ($contract.EditRenderDecorations60.DragHintFontPoints -eq 6.0 -and $contract.EditRenderDecorations100.DragHintFontPoints -eq 10.0 -and $contract.EditRenderDecorations130.DragHintFontPoints -eq 13.0) `
-            '拖动提示字体必须由 OverlayRenderMetrics 缩放。'
-        Assert-Condition ($contract.MovePreview.Kind -eq 0) '拖动模拟必须报告 Move。'
+            ($contract.EditRenderDecorations60.DragHintFontPoints -eq 5.4 -and $contract.EditRenderDecorations100.DragHintFontPoints -eq 9.0 -and $contract.EditRenderDecorations130.DragHintFontPoints -eq 11.7) `
+            'Размер шрифта подсказки при перетаскивании должен учитывать масштаб из OverlayRenderMetrics.'
+        Assert-Condition ($contract.MovePreview.Kind -eq 0) 'Моделирование перетаскивания должно сообщать о перемещении.'
         Assert-Condition `
             ($contract.MovePreview.CursorScreen.X -eq 1528 -and $contract.MovePreview.CursorScreen.Y -eq 137) `
-            '拖动预览必须报告真实屏幕光标。'
-        Assert-Rect $contract.MovePreviewBounds 1430 120 196 34 '拖动预览只能按屏幕增量改变位置。'
-        Assert-Condition $contract.MovePreservedSize '拖动预览不得改变大小。'
-        Assert-Condition ($contract.MinimumResizePreview.Kind -eq 1) '缩放模拟必须报告 Resize。'
-        Assert-Condition ($contract.MinimumResizePreview.ScalePercent -eq 60) '缩放预览必须精确钳制到 60%。'
-        Assert-Condition ($contract.MaximumResizePreview.ScalePercent -eq 130) '缩放预览必须精确钳制到 130%。'
+            'Предварительный просмотр при перетаскивании должен сообщать о реальном курсоре на экране.'
+        Assert-Rect $contract.MovePreviewBounds 1430 120 196 34 'Перетаскивание предварительного просмотра может изменить положение только с шагом на экране.'
+        Assert-Condition $contract.MovePreservedSize 'При перетаскивании предварительного просмотра размер не должен меняться.'
+        Assert-Condition ($contract.MinimumResizePreview.Kind -eq 1) 'Моделирование масштабирования должно сообщать об изменении размера.'
+        Assert-Condition ($contract.MinimumResizePreview.ScalePercent -eq 60) 'Масштаб предварительного просмотра должен быть ограничен ровно 60 %.'
+        Assert-Condition ($contract.MaximumResizePreview.ScalePercent -eq 130) 'Масштаб предварительного просмотра должен быть ограничен ровно до 130 %.'
         Assert-Condition `
             ($contract.MinimumResizePreview.FixedTopLeft.X -eq 1400 -and $contract.MinimumResizePreview.FixedTopLeft.Y -eq 100) `
-            '最小缩放必须保持固定左上角。'
+            'Минимальное масштабирование должно оставаться фиксированным в верхнем левом углу.'
         Assert-Condition `
             ($contract.MaximumResizePreview.FixedTopLeft.X -eq 1400 -and $contract.MaximumResizePreview.FixedTopLeft.Y -eq 100) `
-            '最大缩放必须保持固定左上角。'
+            'Максимальный масштаб должен оставаться зафиксированным в левом верхнем углу.'
         foreach ($lostCapture in @($contract.LostMoveCapture, $contract.LostResizeCapture)) {
-            Assert-Condition $lostCapture.ActiveBeforeInterruption '产生预览后手势必须仍处于活动状态。'
-            Assert-Condition (-not $lostCapture.ActiveAfterInterruption) '外部 capture loss 必须释放手势状态。'
-            Assert-Condition (-not $lostCapture.ActiveAfterRepeatedSignals) '重复 capture loss/MouseUp 不得重新激活或重复完成。'
-            Assert-Condition (-not $lostCapture.CaptureAfterInterruption) '外部 capture loss 后窗体不得保留鼠标捕获。'
-            Assert-Condition ($lostCapture.CompletionCount -eq 1) '外部 capture loss 必须恰好完成一次手势。'
-            Assert-Condition ($lostCapture.Completed.Kind -eq $lostCapture.ExpectedKind) 'capture loss 完成事件必须保留手势类型。'
+            Assert-Condition $lostCapture.ActiveBeforeInterruption 'После создания предварительного просмотра жесты должны оставаться активными.'
+            Assert-Condition (-not $lostCapture.ActiveAfterInterruption) 'Потеря внешнего захвата должна привести к выходу из состояния жеста.'
+            Assert-Condition (-not $lostCapture.ActiveAfterRepeatedSignals) 'Повторная потеря захвата/MouseUp нельзя повторно активировать или завершать повторно.'
+            Assert-Condition (-not $lostCapture.CaptureAfterInterruption) 'Формы не должны сохранять захват мыши после потери внешнего захвата.'
+            Assert-Condition ($lostCapture.CompletionCount -eq 1) 'Потеря внешнего захвата. Жест необходимо выполнить ровно один раз.'
+            Assert-Condition ($lostCapture.Completed.Kind -eq $lostCapture.ExpectedKind) 'Потеря захвата. Событие завершения должно сохранять тип жеста.'
             Assert-Condition `
                 ($lostCapture.Completed.CursorScreen.X -eq $lostCapture.Preview.CursorScreen.X -and $lostCapture.Completed.CursorScreen.Y -eq $lostCapture.Preview.CursorScreen.Y) `
-                'capture loss 完成事件必须使用最后一次生产预览光标。'
-            Assert-Condition ($lostCapture.Completed.ScalePercent -eq $lostCapture.Preview.ScalePercent) 'capture loss 完成事件必须保留最后一次生产预览缩放。'
+                'В событии завершения потери захвата должен использоваться последний курсор предварительного просмотра продукции.'
+            Assert-Condition ($lostCapture.Completed.ScalePercent -eq $lostCapture.Preview.ScalePercent) 'Событие завершения потери захвата должно сохранять последний масштаб предварительного просмотра.'
         }
-        Assert-Condition ($contract.LostMoveCapture.Completed.CursorScreen.X -eq 1529 -and $contract.LostMoveCapture.Completed.CursorScreen.Y -eq 136) 'Move capture loss 必须回报精确屏幕光标。'
-        Assert-Condition ($contract.LostResizeCapture.Completed.CursorScreen.X -eq 1621 -and $contract.LostResizeCapture.Completed.CursorScreen.Y -eq 147) 'Resize capture loss 必须回报精确屏幕光标。'
-        Assert-Condition ($contract.CancelCapture.CancelRequestCount -eq 1) 'Esc 取消路径必须触发一次取消请求。'
-        Assert-Condition ($contract.CancelCapture.CompletionCount -eq 0) 'Esc/EndEditMode 不得产生虚假手势完成。'
-        Assert-Condition (-not $contract.CancelCapture.ActiveAfterInterruption -and -not $contract.CancelCapture.CaptureAfterInterruption) 'Esc/EndEditMode 必须静默清理捕获和手势状态。'
-        Assert-Condition ($contract.DisposeCapture.CompletionCount -eq 0) 'Dispose 不得产生虚假手势完成。'
-        Assert-Condition (-not $contract.DisposeCapture.ActiveAfterInterruption -and -not $contract.DisposeCapture.CaptureAfterInterruption) 'Dispose 必须静默清理捕获和手势状态。'
-        Assert-Condition ($contract.EditGestureCompletionCount -eq 3) '三次模拟手势必须各在鼠标释放时触发一次完成事件。'
-        Assert-Condition ($contract.SaveRequestCount -eq 1) '编辑态 Enter 必须仅触发一次保存。'
-        Assert-Condition ($contract.CancelRequestCount -eq 1) '编辑态 Esc 必须仅触发一次取消。'
-        Assert-Condition $contract.RestoredWsExNoActivatePresent '结束编辑后必须恢复 WS_EX_NOACTIVATE。'
-        Assert-Condition ($contract.RestoredMouseActivateResult -eq 3) '结束编辑后 WM_MOUSEACTIVATE 必须恢复 MA_NOACTIVATE。'
+        Assert-Condition ($contract.LostMoveCapture.Completed.CursorScreen.X -eq 1529 -and $contract.LostMoveCapture.Completed.CursorScreen.Y -eq 136) 'При потере захвата перемещения необходимо сообщать точный курсор на экране.'
+        Assert-Condition ($contract.LostResizeCapture.Completed.CursorScreen.X -eq 1621 -and $contract.LostResizeCapture.Completed.CursorScreen.Y -eq 147) 'Потеря захвата при изменении размера должна сообщать точный курсор на экране.'
+        Assert-Condition ($contract.CancelCapture.CancelRequestCount -eq 1) 'Esc для отмены пути должен вызвать запрос на отмену.'
+        Assert-Condition ($contract.CancelCapture.CompletionCount -eq 0) 'Esc/EndEditMode не должен вызывать ложное завершение жеста.'
+        Assert-Condition (-not $contract.CancelCapture.ActiveAfterInterruption -and -not $contract.CancelCapture.CaptureAfterInterruption) 'Esc/EndEditMode должен автоматически очищать состояние захвата и жестов.'
+        Assert-Condition ($contract.DisposeCapture.CompletionCount -eq 0) 'Dispose не должен вызывать ложное завершение жестов.'
+        Assert-Condition (-not $contract.DisposeCapture.ActiveAfterInterruption -and -not $contract.DisposeCapture.CaptureAfterInterruption) 'Dispose должен автоматически очищать состояние захвата и жестов.'
+        Assert-Condition ($contract.EditGestureCompletionCount -eq 3) 'Три смоделированных жеста должны вызывать событие завершения при отпускании мыши.'
+        Assert-Condition ($contract.SaveRequestCount -eq 1) 'Вход в режим редактирования должен вызывать сохранение только один раз.'
+        Assert-Condition ($contract.CancelRequestCount -eq 1) 'Состояние редактирования Esc должно инициировать отмену только один раз.'
+        Assert-Condition $contract.RestoredWsExNoActivatePresent 'WS_EX_NOACTIVATE необходимо восстановить после завершения редактирования.'
+        Assert-Condition ($contract.RestoredMouseActivateResult -eq 3) 'WM_MOUSEACTIVATE должен вернуться к MA_NOACTIVATE после завершения редактирования.'
 
         Assert-Condition `
-            ($contract.Metrics60.LabelFontPoints -eq 6.0 -and $contract.Metrics100.LabelFontPoints -eq 10.0 -and $contract.Metrics130.LabelFontPoints -eq 13.0) `
-            '标签字体必须使用统一用户缩放因子。'
+            ($contract.Metrics60.LabelFontPoints -eq 5.4 -and $contract.Metrics100.LabelFontPoints -eq 9.0 -and $contract.Metrics130.LabelFontPoints -eq 11.7) `
+            'Шрифты меток должны использовать единый пользовательский коэффициент масштабирования.'
         Assert-Condition `
-            ($contract.Metrics60.CompactValueFontPoints -eq 7.2 -and $contract.Metrics100.CompactValueFontPoints -eq 12.0 -and $contract.Metrics130.CompactValueFontPoints -eq 15.6) `
-            '紧凑值字体必须使用统一用户缩放因子。'
+            ($contract.Metrics60.CompactValueFontPoints -eq 6.6 -and $contract.Metrics100.CompactValueFontPoints -eq 11.0 -and $contract.Metrics130.CompactValueFontPoints -eq 14.3) `
+            'Для компактных шрифтов должен использоваться единый пользовательский коэффициент масштабирования.'
         Assert-Condition `
-            ($contract.Metrics60.PanelHeaderFontPoints -eq 7.8 -and $contract.Metrics100.PanelHeaderFontPoints -eq 13.0 -and $contract.Metrics130.PanelHeaderFontPoints -eq 16.9) `
-            '面板标题字体必须使用统一用户缩放因子。'
+            ($contract.Metrics60.PanelHeaderFontPoints -eq 7.2 -and $contract.Metrics100.PanelHeaderFontPoints -eq 12.0 -and $contract.Metrics130.PanelHeaderFontPoints -eq 15.6) `
+            'Шрифты заголовков панелей должны использовать единый пользовательский коэффициент масштабирования.'
         Assert-Condition `
-            ($contract.Metrics60.HighlightedValueFontPoints -eq 9.0 -and $contract.Metrics100.HighlightedValueFontPoints -eq 15.0 -and $contract.Metrics130.HighlightedValueFontPoints -eq 19.5) `
-            '高亮值字体必须使用统一用户缩放因子。'
+            ($contract.Metrics60.HighlightedValueFontPoints -eq 8.4 -and $contract.Metrics100.HighlightedValueFontPoints -eq 14.0 -and $contract.Metrics130.HighlightedValueFontPoints -eq 18.2) `
+            'Шрифты со значением выделения должны использовать единый пользовательский коэффициент масштабирования.'
         Assert-Condition `
             ($contract.Metrics60.CapsuleRadius -eq 6 -and $contract.Metrics100.CapsuleRadius -eq 10 -and $contract.Metrics130.CapsuleRadius -eq 13) `
-            '胶囊圆角必须使用统一 DPI/用户缩放因子。'
+            'При округлении капсулы необходимо использовать единый коэффициент масштабирования DPI/пользователя.'
         Assert-Condition `
             ($contract.Metrics60.PanelRadius -eq 8 -and $contract.Metrics100.PanelRadius -eq 14 -and $contract.Metrics130.PanelRadius -eq 18) `
-            '面板圆角必须使用统一 DPI/用户缩放因子。'
+            'Для закругления углов панели необходимо использовать единый коэффициент масштабирования DPI/пользователя.'
         Assert-Condition `
             ($contract.Metrics60.HorizontalPadding -eq 6 -and $contract.Metrics100.HorizontalPadding -eq 10 -and $contract.Metrics130.HorizontalPadding -eq 13) `
-            '水平内边距必须使用统一 DPI/用户缩放因子。'
+            'Для горизонтального заполнения необходимо использовать единый коэффициент масштабирования DPI/пользователя.'
         Assert-Condition `
             ($contract.Metrics60.MetricGap -eq 5 -and $contract.Metrics100.MetricGap -eq 8 -and $contract.Metrics130.MetricGap -eq 10) `
-            '指标间距必须使用统一 DPI/用户缩放因子。'
+            'Для расстояния между индикаторами должен использоваться единый коэффициент масштабирования DPI/пользователя.'
         Assert-Condition `
             ($contract.Metrics60.DividerHeight -eq 8 -and $contract.Metrics100.DividerHeight -eq 14 -and $contract.Metrics130.DividerHeight -eq 18) `
-            '分隔线必须使用统一 DPI/用户缩放因子。'
+            'В разделителях должен использоваться единый коэффициент масштабирования DPI/пользователя.'
         Assert-Condition `
             ($contract.Metrics60.PanelPadding -eq 8 -and $contract.Metrics100.PanelPadding -eq 14 -and $contract.Metrics130.PanelPadding -eq 18) `
-            '面板内边距必须使用统一 DPI/用户缩放因子。'
+            'Для заполнения панели должен использоваться единый коэффициент масштабирования DPI/пользователя.'
         Assert-Condition `
             ($contract.Metrics60.EditHandleSize -eq 7 -and $contract.Metrics100.EditHandleSize -eq 12 -and $contract.Metrics130.EditHandleSize -eq 16) `
-            '编辑缩放柄必须使用统一 DPI/用户缩放因子。'
+            'При редактировании маркеров масштабирования необходимо использовать единый коэффициент масштабирования DPI/пользователя.'
 
-        Assert-Condition $contract.HighlightWsExToolWindowPresent '目标高亮必须设置 WS_EX_TOOLWINDOW。'
-        Assert-Condition $contract.HighlightWsExNoActivatePresent '目标高亮必须设置 WS_EX_NOACTIVATE。'
-        Assert-Condition $contract.HighlightWsExTransparentPresent '目标高亮必须设置 WS_EX_TRANSPARENT。'
-        Assert-Condition (-not $contract.HighlightShowInTaskbar) '目标高亮不得出现在任务栏。'
-        Assert-Condition ($contract.HighlightSetBoundsCoreDelta -eq 1) 'ShowTarget 必须仅用一次 SetBounds 更新目标边界。'
-        Assert-Rect $contract.HighlightBounds 300 240 420 260 '目标高亮必须匹配目标窗口边界。'
+        Assert-Condition $contract.HighlightWsExToolWindowPresent 'Для выделения цели необходимо установить WS_EX_TOOLWINDOW.'
+        Assert-Condition $contract.HighlightWsExNoActivatePresent 'Для выделения цели необходимо установить WS_EX_NOACTIVATE.'
+        Assert-Condition $contract.HighlightWsExTransparentPresent 'Для выделения цели необходимо установить WS_EX_TRANSPARENT.'
+        Assert-Condition (-not $contract.HighlightShowInTaskbar) 'Подсветка цели не должна отображаться на панели задач.'
+        Assert-Condition ($contract.HighlightSetBoundsCoreDelta -eq 1) 'ShowTarget должен обновлять целевые границы с помощью SetBounds только один раз.'
+        Assert-Rect $contract.HighlightBounds 300 240 420 260 'Целевое выделение должно совпадать с границами целевого окна.'
         $expectedHighlightThickness = [Math]::Max(
             1,
             [int][Math]::Round(
@@ -3074,14 +3074,14 @@ try {
                 [MidpointRounding]::AwayFromZero))
         Assert-Condition `
             ($contract.HighlightExpectedRingThicknessPixels -eq $expectedHighlightThickness) `
-            "目标高亮 2 DIP 环形宽度必须按当前 DPI 换算。dpi=$($contract.HighlightDeviceDpi) expected=$expectedHighlightThickness probe=$($contract.HighlightExpectedRingThicknessPixels)"
-        Assert-Condition $contract.HighlightHasRingRegion '目标高亮必须使用精确 2 DIP 的四边环形 Region。'
-        Assert-Condition ($contract.HighlightHitTest -eq -1) '目标高亮必须点击穿透。'
-        Assert-Condition $contract.HighlightHiddenAfterClear 'ClearTarget 必须隐藏目标高亮。'
-        Assert-Condition $contract.HighlightRegionCleared 'ClearTarget 必须释放并清空旧 Region。'
+            "Ширина кольца DIP целевой подсветки 2 должна быть преобразована в текущее значение DPI. dpi=$($contract.HighlightDeviceDpi) ожидаемый=$expectedHighlightThickness проверка=$($contract.HighlightExpectedRingThicknessPixels)"
+        Assert-Condition $contract.HighlightHasRingRegion 'Для выделения цели должно использоваться четырехстороннее кольцо. Область размером ровно 2 DIP.'
+        Assert-Condition ($contract.HighlightHitTest -eq -1) 'Для проникновения необходимо нажать на выделение цели.'
+        Assert-Condition $contract.HighlightHiddenAfterClear 'ClearTarget должен скрывать подсветку цели.'
+        Assert-Condition $contract.HighlightRegionCleared 'ClearTarget должен освободить и очистить старый регион.'
     }
 
-    Write-Host "Overlay 逻辑测试通过：$($areas -join ', ')"
+    Write-Host "Логические проверки Overlay пройдены: $($areas -join ', ')"
 }
 finally {
     $temporaryRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())

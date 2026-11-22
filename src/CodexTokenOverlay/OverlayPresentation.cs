@@ -102,7 +102,7 @@ internal static class OverlayPresentationBuilder
             DisplayField.ContextPercent => "Использовано контекста (%)",
             DisplayField.Reasoning => "Токены рассуждения",
             DisplayField.Thread => "ID чата",
-            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "不支持的展示字段。")
+            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Неподдерживаемое поле отображения.")
         };
     }
 
@@ -111,7 +111,7 @@ internal static class OverlayPresentationBuilder
         if (!DisplayFieldRules.IsSingleSupported(primaryField)
             || !DisplayFieldRules.IsSingleSupported(secondaryField))
         {
-            throw new ArgumentException("收起指标必须是受支持的单个字段。");
+            throw new ArgumentException("Для свёрнутого режима нужно выбрать одно поддерживаемое поле.");
         }
     }
 
@@ -159,7 +159,7 @@ internal static class OverlayPresentationBuilder
             DisplayField.ContextPercent => $"{contextPercent:0}%",
             DisplayField.Reasoning => FormatTokenCount(snapshot.ReasoningOutputTokens),
             DisplayField.Thread => ShortThreadId(snapshot.ThreadId),
-            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "不支持的展示字段。")
+            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Неподдерживаемое поле отображения.")
         };
         var hasValue = field != DisplayField.Thread || !string.IsNullOrWhiteSpace(snapshot.ThreadId);
         return new OverlayMetric(field, labels.Compact, labels.Expanded, value, hasValue);
@@ -180,7 +180,7 @@ internal static class OverlayPresentationBuilder
             DisplayField.ContextPercent => ("Контекст", "Заполнено (%)"),
             DisplayField.Reasoning => ("Рассужд.", "Токены рассуждения"),
             DisplayField.Thread => ("Чат", "Чат"),
-            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "不支持的展示字段。")
+            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Неподдерживаемое поле отображения.")
         };
     }
 
@@ -225,7 +225,7 @@ internal static class PresentationProbe
             var presentation = probeCase.Operation switch
             {
                 "Create" => OverlayPresentationBuilder.Create(
-                    probeCase.Snapshot ?? throw new ArgumentException("Create 操作需要 Snapshot。", nameof(probeCase)),
+                    probeCase.Snapshot ?? throw new ArgumentException("Для операции Create требуется значение Snapshot.", nameof(probeCase)),
                     primaryField,
                     secondaryField,
                     visibleFields),
@@ -234,7 +234,7 @@ internal static class PresentationProbe
                     primaryField,
                     secondaryField,
                     visibleFields),
-                _ => throw new ArgumentException($"不支持的展示探针操作：{probeCase.Operation}", nameof(probeCase))
+                _ => throw new ArgumentException($"Не поддерживается операция проверки отображения: {probeCase.Operation}", nameof(probeCase))
             };
             results.Add(new PresentationProbeCaseResult(probeCase.Name, presentation));
         }
@@ -246,7 +246,7 @@ internal static class PresentationProbe
     {
         if (!value.HasValue)
         {
-            throw new ArgumentException("展示探针需要字段。", parameterName);
+            throw new ArgumentException("Для проверки отображения требуется поле.", parameterName);
         }
 
         return (DisplayField)value.Value;

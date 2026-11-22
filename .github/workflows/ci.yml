@@ -91,17 +91,17 @@ jobs:
           $standaloneExecutable = Join-Path $standaloneOutput 'CodexTokenOverlay.exe'
           foreach ($executable in @($liteExecutable, $standaloneExecutable)) {
             if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-              throw "发布结果缺少 CodexTokenOverlay.exe：$executable"
+              throw "В сборке отсутствует CodexTokenOverlay.exe по пути $executable"
             }
           }
 
           $liteSize = (Get-Item -LiteralPath $liteExecutable).Length
           $standaloneSize = (Get-Item -LiteralPath $standaloneExecutable).Length
           if ($liteSize -ge 1MB) {
-            throw "Lite EXE 超过 1 MiB：$liteSize bytes"
+            throw "Размер Lite EXE должен быть меньше 1 МиБ. Получено $liteSize байт."
           }
           if ($standaloneSize -le $liteSize) {
-            throw "Standalone EXE 体积异常：$standaloneSize bytes"
+            throw "Размер автономного EXE должен превышать размер Lite. Получено $standaloneSize байт."
           }
 
           Write-Host "Lite: $liteSize bytes; Standalone: $standaloneSize bytes"
