@@ -23,7 +23,7 @@ $originalCodexHome = $env:CODEX_HOME
 try {
     New-Item -ItemType Directory -Path $sessionDirectory -Force | Out-Null
 
-    # 只使用合成数据，测试仓库不会包含任何真实 Codex 会话内容。
+    # Используются только синтетические данные; в тестовый репозиторий не попадёт содержимое реальных сессий Codex.
     $sessionMeta = '{"type":"session_meta","payload":{"originator":"Codex Desktop","source":"vscode"}}'
     $tokenEvent = '{"timestamp":"2026-07-17T00:00:01.123456789Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":12345,"input_tokens":10000,"cached_input_tokens":7000,"output_tokens":2345,"reasoning_output_tokens":345},"last_token_usage":{"total_tokens":2300,"input_tokens":2048},"model_context_window":128000}}}'
     [System.IO.File]::WriteAllLines(
@@ -51,20 +51,20 @@ try {
 
     & $DotnetPath build $projectPath -c Release --nologo "-p:TargetFramework=$TargetFramework"
     if ($LASTEXITCODE -ne 0) {
-        throw "项目构建失败。"
+        throw "Не удалось собрать проект."
     }
 
     $applicationDll = Join-Path $repositoryRoot "src\CodexTokenOverlay\bin\Release\$TargetFramework\CodexTokenOverlay.dll"
     $applicationAssembly = [System.Reflection.Assembly]::LoadFrom($applicationDll)
     $probeRunnerType = $applicationAssembly.GetType("CodexTokenOverlay.ProbeRunner", $false)
     if ($null -eq $probeRunnerType) {
-        throw "ProbeRunner 统一探针入口不存在。"
+        throw "Единая точка входа ProbeRunner не найдена."
     }
     $tryRun = $probeRunnerType.GetMethod(
         "TryRun",
         [System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Static)
     if ($null -eq $tryRun) {
-        throw "ProbeRunner.TryRun 入口不存在。"
+        throw "Точка входа ProbeRunner.TryRun не найдена."
     }
     $normalStartupArguments = [System.Collections.Generic.List[string]]::new()
     $normalStartupInvocation = New-Object object[] 2
@@ -74,10 +74,10 @@ try {
         $null,
         $normalStartupInvocation)
     if ($normalStartupResult -ne $false) {
-        throw "正常 UI 启动不应被探针入口接管。"
+        throw "Обычный запуск интерфейса не должен обрабатываться точкой входа для проверок."
     }
 
-    # 先从统一入口确认新参数会被探针接管，避免缺失实现时误入 WinForms 启动路径。
+    # Сначала убеждаемся через единую точку входа, что новые параметры обрабатываются проверкой: так при отсутствии реализации не будет запущен интерфейс WinForms.
     $switchProbeArguments = [System.Collections.Generic.List[string]]::new()
     foreach ($argument in @("--thread-switch-probe", $switchProbePath, $threadA, $threadB)) {
         $switchProbeArguments.Add($argument)
@@ -87,13 +87,13 @@ try {
     $switchProbeInvocation[1] = [string](Join-Path $testRoot "sessions")
     $switchProbeHandled = $tryRun.Invoke($null, $switchProbeInvocation)
     if ($switchProbeHandled -ne $true -or -not (Test-Path -LiteralPath $switchProbePath)) {
-        throw "线程切换探针结果缺失。"
+        throw "Нет результата проверки переключения потоков."
     }
     Remove-Item -LiteralPath $switchProbePath -Force
 
     & $DotnetPath $applicationDll --thread-switch-probe $switchProbePath $threadA $threadB --sessions (Join-Path $testRoot "sessions")
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $switchProbePath)) {
-        throw "线程切换探针执行失败。"
+        throw "Не удалось выполнить проверку переключения потоков."
     }
 
     $switchResult = Get-Content -LiteralPath $switchProbePath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -107,12 +107,12 @@ try {
         [System.IO.File]::GetLastWriteTimeUtc($threadBPath).Ticks -eq $threadBWriteTicks
     )
     if ($switchChecks -contains $false) {
-        throw "静止线程切换结果与预期不一致。"
+        throw "Результат переключения потоков без новых записей не совпадает с ожидаемым."
     }
 
     & $DotnetPath $applicationDll --probe $probePath --sessions (Join-Path $testRoot "sessions")
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $probePath)) {
-        throw "日志探针执行失败。"
+        throw "Не удалось выполнить проверку журнала."
     }
 
     $snapshot = Get-Content -LiteralPath $probePath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -130,19 +130,19 @@ try {
         $snapshot.UncachedInputTokens -eq 3000
     )
     if ($checks -contains $false) {
-        throw "解析结果与合成日志不一致。"
+        throw "Результат разбора не совпадает с синтетическим журналом."
     }
 
-    # 再验证 CODEX_HOME 自动发现，不要求用户把程序放在特定目录。
+    # Также проверяем автоматическое обнаружение CODEX_HOME: программа не должна требовать установки в определённую папку.
     Remove-Item -LiteralPath $probePath -Force
     $env:CODEX_HOME = $testRoot
     & $DotnetPath $applicationDll --probe $probePath
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $probePath)) {
-        throw "CODEX_HOME 自动发现测试失败。"
+        throw "Не удалось проверить автоматическое обнаружение CODEX_HOME."
     }
     $autoDiscoveredSnapshot = Get-Content -LiteralPath $probePath -Encoding UTF8 -Raw | ConvertFrom-Json
     if ($autoDiscoveredSnapshot.ThreadId -ne $threadId -or $autoDiscoveredSnapshot.TotalTokens -ne 12345) {
-        throw "CODEX_HOME 自动发现结果不正确。"
+        throw "Результат автоматического обнаружения CODEX_HOME неверен."
     }
 
     $unknownUsageEvent = '{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":12400},"last_token_usage":{"input_tokens":2048,"total_tokens":null},"model_context_window":128000}}}'
@@ -155,16 +155,16 @@ try {
         $caseProbePath = Join-Path $testRoot "$($case.Name).json"
         & $DotnetPath $applicationDll --probe $caseProbePath $threadId
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $caseProbePath)) {
-            throw "缺失上下文数据的探针执行失败：$($case.Name)"
+            throw "Не удалось выполнить проверку при отсутствии данных о контексте: $($case.Name)"
         }
         $caseSnapshot = Get-Content -LiteralPath $caseProbePath -Encoding UTF8 -Raw | ConvertFrom-Json
         if ($caseSnapshot.TotalTokens -ne $case.Total -or $caseSnapshot.HasContextUsage -ne $false -or
             $caseSnapshot.ContextUsedTokens -ne $case.Used -or $caseSnapshot.ContextWindowTokens -ne $case.Window) {
-            throw "缺失上下文数据时应保留最新累计值并标记占用未知：$($case.Name)"
+            throw "При отсутствии данных о контексте нужно сохранить последнее итоговое значение и пометить использование контекста как неизвестное: $($case.Name)"
         }
     }
 
-    Write-Host "日志解析测试通过。"
+    Write-Host "Проверка разбора журнала пройдена."
 }
 finally {
     if ($null -eq $originalCodexHome) {

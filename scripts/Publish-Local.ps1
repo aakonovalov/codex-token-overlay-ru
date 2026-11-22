@@ -26,7 +26,7 @@ function Remove-ArtifactPath {
     $artifactsPrefix = $resolvedArtifactsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
     if ($resolvedPath.Equals($resolvedArtifactsRoot, [StringComparison]::OrdinalIgnoreCase) -or
         -not $resolvedPath.StartsWith($artifactsPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "拒绝清理 artifacts 目录之外的路径：$resolvedPath"
+        throw "Очистка разрешена только внутри каталога artifacts. Получен путь $resolvedPath"
     }
 
     Remove-Item -LiteralPath $resolvedPath -Recurse -Force
@@ -48,7 +48,6 @@ function New-ReleaseArchive {
     New-Item -ItemType Directory -Path $stagingDirectory -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PublishDirectory "CodexTokenOverlay.exe") -Destination $stagingDirectory
     Copy-Item -LiteralPath (Join-Path $repositoryRoot "README.md") -Destination $stagingDirectory
-    Copy-Item -LiteralPath (Join-Path $repositoryRoot "README.zh-CN.md") -Destination $stagingDirectory
     Copy-Item -LiteralPath (Join-Path $repositoryRoot "LICENSE") -Destination $stagingDirectory
     if ($IsLite) {
         Copy-Item -LiteralPath $runtimeNoticePath -Destination $stagingDirectory
@@ -63,13 +62,14 @@ function New-ReleaseArchive {
         [System.Text.UTF8Encoding]::new($false))
 
     $archiveSize = (Get-Item -LiteralPath $archivePath).Length
-    Write-Host "发布包已生成：$archivePath ($archiveSize bytes)"
-    Write-Host "校验文件已生成：$checksumPath"
+    Write-Host "Создан архив $archivePath ($archiveSize байт)"
+    Write-Host "Создан файл контрольной суммы $checksumPath"
 }
 
 New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
 
-# v0.2.1 起独立版恢复无后缀的兼容名称，清理预发布阶段使用过的旧后缀产物。
+# С версии 0.2.1 автономный архив снова использует имя без суффикса -standalone.
+# Удаляем файлы со старым суффиксом, который использовался в предварительных выпусках.
 $obsoleteStandaloneBase = Join-Path $artifactsRoot ("CodexTokenOverlay-" + $RuntimeIdentifier + "-standalone")
 foreach ($obsoletePath in @(
         $obsoleteStandaloneBase,
@@ -93,19 +93,19 @@ if ($buildLite) {
         -p:DebugType=None `
         -p:DebugSymbols=false
     if ($LASTEXITCODE -ne 0) {
-        throw "Lite 发布构建失败。"
+        throw "Не удалось собрать версию Lite."
     }
 
     $liteExecutable = Join-Path $litePublishDirectory "CodexTokenOverlay.exe"
     $liteSize = (Get-Item -LiteralPath $liteExecutable).Length
     if ($liteSize -ge 1MB) {
-        throw "Lite EXE 超过 1 MiB：$liteSize bytes"
+        throw "Размер Lite EXE должен быть меньше 1 МиБ. Получено $liteSize байт."
     }
     & (Join-Path $PSScriptRoot "Test-PeArchitecture.ps1") `
         -ExecutablePath $liteExecutable `
         -Architecture $RuntimeIdentifier.Substring($RuntimeIdentifier.IndexOf('-') + 1)
 
-    # 当前机器可直接执行 x64 探针；Arm64 交叉产物由 CI 继续验证构建和 PE 架构。
+    # Запускаем проверку x64 на этой машине. Для Arm64 в CI проверяются сборка и архитектура PE.
     if ($RuntimeIdentifier -eq "win-x64") {
         & (Join-Path $PSScriptRoot "Test-PublishedExecutable.ps1") -ExecutablePath $liteExecutable
     }
@@ -128,7 +128,7 @@ if ($buildStandalone) {
         -p:DebugType=None `
         -p:DebugSymbols=false
     if ($LASTEXITCODE -ne 0) {
-        throw "Standalone 发布构建失败。"
+        throw "Не удалось собрать автономную версию."
     }
 
     & (Join-Path $PSScriptRoot "Test-PeArchitecture.ps1") `

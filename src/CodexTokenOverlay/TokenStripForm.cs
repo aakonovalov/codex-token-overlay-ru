@@ -289,7 +289,7 @@ internal sealed class TokenStripForm : Form
         if (CurrentLayout?.State != OverlayVisualState.Collapsed
             || !CurrentLayout.PanelBounds.IsEmpty)
         {
-            throw new InvalidOperationException("编辑模式只能从收起布局开始。");
+            throw new InvalidOperationException("Режим редактирования можно включить только из свёрнутого макета.");
         }
 
         _gestureStartScalePercent = ManualAttachmentRules.SanitizeScale(scalePercent);

@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $resolvedExecutable = [System.IO.Path]::GetFullPath($ExecutablePath)
 if (-not (Test-Path -LiteralPath $resolvedExecutable -PathType Leaf)) {
-    throw "找不到待验证的发布程序：$resolvedExecutable"
+    throw "Не найден опубликованный исполняемый файл для проверки: $resolvedExecutable"
 }
 
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("CodexTokenOverlayPublishedTests-" + [Guid]::NewGuid().ToString("N"))
@@ -21,7 +21,7 @@ $process = $null
 try {
     New-Item -ItemType Directory -Path $sessionDirectory -Force | Out-Null
 
-    # 只使用合成日志，验证发布后的 EXE 确实能够启动并解析完整指标。
+    # Используется только синтетический журнал, чтобы проверить запуск опубликованного EXE и разбор всех показателей.
     $sessionMeta = '{"type":"session_meta","payload":{"originator":"Codex Desktop","source":"vscode"}}'
     $tokenEvent = '{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":12345,"input_tokens":10000,"cached_input_tokens":7000,"output_tokens":2345,"reasoning_output_tokens":345},"last_token_usage":{"total_tokens":2300,"input_tokens":2048},"model_context_window":128000}}}'
     [System.IO.File]::WriteAllLines(
@@ -38,16 +38,16 @@ try {
         -WindowStyle Hidden `
         -PassThru
 
-    # 探针应在数秒内结束；超时后只终止本脚本刚刚启动的精确进程。
+    # Проверка должна завершиться за несколько секунд; при превышении лимита завершаем только процесс, запущенный этим скриптом.
     if (-not $process.WaitForExit(30000)) {
         $process.Kill()
         $process.WaitForExit()
-        throw "发布程序探针超过 30 秒仍未退出。"
+        throw "Проверка опубликованной программы не завершилась за 30 секунд."
     }
 
     $exitCode = $process.ExitCode
     if ($exitCode -ne 0 -or -not (Test-Path -LiteralPath $probePath -PathType Leaf)) {
-        throw "发布程序探针执行失败，退出码：$exitCode"
+        throw "Не удалось выполнить проверку опубликованной программы. Код завершения: $exitCode"
     }
 
     $snapshot = Get-Content -LiteralPath $probePath -Encoding UTF8 -Raw | ConvertFrom-Json
@@ -63,10 +63,10 @@ try {
         $snapshot.ContextWindowTokens -eq 128000
     )
     if ($checks -contains $false) {
-        throw "发布程序解析结果与合成日志不一致。"
+        throw "Результат разбора опубликованной программы не совпадает с синтетическим журналом."
     }
 
-    Write-Host "发布程序探针测试通过：$resolvedExecutable"
+    Write-Host "Проверка опубликованной программы пройдена: $resolvedExecutable"
 }
 finally {
     if ($null -ne $process) {
@@ -77,7 +77,7 @@ finally {
             }
         }
         catch {
-            # 进程可能已在状态检查期间退出，此时只需继续清理测试目录。
+            # Процесс мог завершиться во время проверки его состояния; в этом случае достаточно продолжить очистку тестовой папки.
         }
         finally {
             $process.Dispose()

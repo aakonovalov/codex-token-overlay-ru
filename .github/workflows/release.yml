@@ -94,17 +94,17 @@ jobs:
           $standaloneExecutable = Join-Path $standalonePublishDirectory 'CodexTokenOverlay.exe'
           foreach ($executable in @($liteExecutable, $standaloneExecutable)) {
             if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-              throw "发布结果缺少 CodexTokenOverlay.exe：$executable"
+              throw "В сборке отсутствует CodexTokenOverlay.exe по пути $executable"
             }
           }
 
           $liteSize = (Get-Item -LiteralPath $liteExecutable).Length
           $standaloneSize = (Get-Item -LiteralPath $standaloneExecutable).Length
           if ($liteSize -ge 1MB) {
-            throw "Lite EXE 超过 1 MiB：$liteSize bytes"
+            throw "Размер Lite EXE должен быть меньше 1 МиБ. Получено $liteSize байт."
           }
           if ($standaloneSize -le $liteSize) {
-            throw "Standalone EXE 体积异常：$standaloneSize bytes"
+            throw "Размер автономного EXE должен превышать размер Lite. Получено $standaloneSize байт."
           }
 
           Write-Host "Lite: $liteSize bytes; Standalone: $standaloneSize bytes"
@@ -146,7 +146,6 @@ jobs:
 
             Copy-Item -LiteralPath (Join-Path $package.PublishDirectory 'CodexTokenOverlay.exe') -Destination $stageDirectory
             Copy-Item -LiteralPath 'README.md' -Destination $stageDirectory
-            Copy-Item -LiteralPath 'README.zh-CN.md' -Destination $stageDirectory
             Copy-Item -LiteralPath 'LICENSE' -Destination $stageDirectory
             if ($package.IsLite) {
               Copy-Item -LiteralPath 'packaging/windows/INSTALL-DOTNET-RUNTIME.txt' -Destination $stageDirectory
@@ -229,7 +228,7 @@ jobs:
           mkdir -p "$stage_directory" "$asset_directory"
 
           ditto "$package_directory/CodexTokenOverlay.app" "$stage_directory/CodexTokenOverlay.app"
-          cp README.md README.zh-CN.md LICENSE "$stage_directory/"
+          cp README.md LICENSE "$stage_directory/"
 
           zip_name="CodexTokenOverlay-$asset.zip"
           zip_path="$asset_directory/$zip_name"
@@ -288,7 +287,7 @@ jobs:
           $assetDifference = @(Compare-Object -ReferenceObject $expectedAssetNames -DifferenceObject $actualAssetNames)
           if ($assetDifference.Count -ne 0) {
             $details = $assetDifference | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" }
-            throw "发布文件清单不完整或含有意外文件：`n$($details -join "`n")"
+            throw "В наборе выпуска отсутствуют ожидаемые файлы или есть лишние.`n$($details -join "`n")"
           }
 
           & gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
@@ -305,5 +304,5 @@ jobs:
           }
 
           if ($LASTEXITCODE -ne 0) {
-            throw "GitHub Release 发布失败：$env:RELEASE_TAG"
+            throw "Не удалось опубликовать выпуск $env:RELEASE_TAG на GitHub."
           }

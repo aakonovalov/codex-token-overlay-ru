@@ -7,11 +7,11 @@ BUNDLE_ID="io.github.soleillevant0125.CodexTokenOverlay"
 MIN_SYSTEM_VERSION="14.0"
 ARCH="$(uname -m)"
 CONFIGURATION="release"
-VERSION="0.4.0"
+VERSION="0.4.1"
 OUTPUT_DIR=""
 
 usage() {
-  echo "usage: $0 [--arch arm64|x86_64] [--configuration debug|release] [--version 0.4.0] [--output directory]" >&2
+  echo "Использование: $0 [--arch arm64|x86_64] [--configuration debug|release] [--version $VERSION] [--output каталог]" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -44,17 +44,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$ARCH" != "arm64" && "$ARCH" != "x86_64" ]]; then
-  echo "unsupported architecture: $ARCH" >&2
+  echo "Неподдерживаемая архитектура: $ARCH" >&2
   exit 2
 fi
 
 if [[ "$CONFIGURATION" != "debug" && "$CONFIGURATION" != "release" ]]; then
-  echo "unsupported configuration: $CONFIGURATION" >&2
+  echo "Неподдерживаемая конфигурация: $CONFIGURATION" >&2
   exit 2
 fi
 
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-  echo "invalid version: $VERSION" >&2
+  echo "Недопустимая версия: $VERSION" >&2
   exit 2
 fi
 
@@ -66,7 +66,7 @@ RUNNER_TEMP_VALUE="${RUNNER_TEMP:-}"
 TMPDIR_VALUE="${TMPDIR:-}"
 mkdir -p "$ARTIFACTS_ROOT" "$DIST_ROOT"
 if [[ -L "$ARTIFACTS_ROOT" || -L "$DIST_ROOT" ]]; then
-  echo "artifacts and dist must not be symbolic links" >&2
+  echo "Каталоги artifacts и dist не должны быть символическими ссылками" >&2
   exit 2
 fi
 
@@ -76,15 +76,15 @@ elif [[ "$OUTPUT_DIR" != /* ]]; then
   OUTPUT_DIR="$ROOT_DIR/$OUTPUT_DIR"
 fi
 
-# 删除输出前先做词法和真实路径双重校验，避免 --output 误伤其他目录。
+# Перед удалением проверяем указанный путь, затем повторяем проверку после разрешения ссылок.
 OUTPUT_BASENAME="$(basename "$OUTPUT_DIR")"
 if [[ -z "$OUTPUT_BASENAME" || "$OUTPUT_BASENAME" == "." || "$OUTPUT_BASENAME" == ".." ]]; then
-  echo "refusing unsafe output directory: $OUTPUT_DIR" >&2
+  echo "Отказ: небезопасный каталог вывода: $OUTPUT_DIR" >&2
   exit 2
 fi
 case "/$OUTPUT_DIR/" in
   *"/../"*|*"/./"*)
-    echo "output directory must not contain . or .. components: $OUTPUT_DIR" >&2
+    echo "Каталог вывода не должен содержать компоненты . или ..: $OUTPUT_DIR" >&2
     exit 2
     ;;
 esac
@@ -110,7 +110,7 @@ for allowed_root in "${ALLOWED_INPUT_ROOTS[@]}"; do
   esac
 done
 if [[ "$LEXICALLY_ALLOWED" != true ]]; then
-  echo "output must be below repository artifacts/dist or a temporary directory: $OUTPUT_DIR" >&2
+  echo "Каталог вывода должен находиться внутри artifacts, dist или временного каталога: $OUTPUT_DIR" >&2
   exit 2
 fi
 
@@ -143,7 +143,7 @@ for allowed_root in "${ALLOWED_REAL_ROOTS[@]}"; do
   esac
 done
 if [[ "$REALLY_ALLOWED" != true ]]; then
-  echo "resolved output escapes the allowed roots: $OUTPUT_DIR" >&2
+  echo "После разрешения ссылок каталог вывода выходит за пределы допустимых путей: $OUTPUT_DIR" >&2
   exit 2
 fi
 
@@ -164,7 +164,7 @@ BIN_DIR="$(swift build \
 BUILD_BINARY="$BIN_DIR/$PRODUCT_NAME"
 
 if [[ ! -x "$BUILD_BINARY" ]]; then
-  echo "missing executable: $BUILD_BINARY" >&2
+  echo "Не найден исполняемый файл: $BUILD_BINARY" >&2
   exit 1
 fi
 
@@ -179,10 +179,9 @@ mkdir -p "$MACOS_CONTENTS" "$RESOURCES_DIR"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
 cp "$ROOT_DIR/README.md" "$RESOURCES_DIR/README.md"
-cp "$ROOT_DIR/README.zh-CN.md" "$RESOURCES_DIR/README.zh-CN.md"
 cp "$ROOT_DIR/LICENSE" "$RESOURCES_DIR/LICENSE"
 
-# CFBundleShortVersionString 只使用点分数字，开发后缀不写入 plist。
+# В CFBundleShortVersionString записываем только числовые компоненты версии.
 BUNDLE_VERSION="${VERSION%%-*}"
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -221,14 +220,14 @@ PLIST
 
 plutil -lint "$INFO_PLIST"
 
-# 无 Developer ID 时使用 ad-hoc 签名保证包内代码完整性；它不等同于公证。
+# При отсутствии Developer ID используем подпись ad hoc для проверки целостности пакета.
 codesign --force --sign - --timestamp=none "$APP_BINARY"
 codesign --force --sign - --timestamp=none "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 
 BUILT_ARCHS="$(lipo -archs "$APP_BINARY")"
 if [[ " $BUILT_ARCHS " != *" $ARCH "* ]]; then
-  echo "unexpected executable architecture: $BUILT_ARCHS (expected $ARCH)" >&2
+  echo "Неожиданная архитектура исполняемого файла: $BUILT_ARCHS (ожидалась $ARCH)" >&2
   exit 1
 fi
 

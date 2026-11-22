@@ -1,6 +1,6 @@
 @echo off
 if not exist "%~dp0dist\win-x64\CodexTokenOverlay.exe" (
- echo Build the portable executable first. See README.context-monitor.zh-CN.md.
+ echo Build the portable executable first. See README.md.
  pause
  exit /b 1
 )

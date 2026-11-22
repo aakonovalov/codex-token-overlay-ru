@@ -7,10 +7,10 @@
     <Nullable>enable</Nullable>
     <AssemblyName>CodexTokenOverlay</AssemblyName>
     <RootNamespace>CodexTokenOverlay</RootNamespace>
-    <Version>0.4.0</Version>
-    <Authors>soleillevant0125</Authors>
-    <Description>A read-only Windows overlay for Codex Desktop token usage.</Description>
-    <RepositoryUrl>https://github.com/soleillevant0125/codex-token-overlay</RepositoryUrl>
+    <Version>0.4.1</Version>
+    <Authors>aakonovalov</Authors>
+    <Description>Плавающий счётчик токенов Codex Desktop для Windows.</Description>
+    <RepositoryUrl>https://github.com/aakonovalov/codex-token-overlay-ru</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
     <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>

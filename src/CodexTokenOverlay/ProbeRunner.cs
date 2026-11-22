@@ -76,7 +76,7 @@ internal static class ProbeRunner
             return true;
         }
 
-        // IPC 探针用于验证 Codex 当前可见任务广播，不启动悬浮条。
+        // Проверка IPC читает сведения о текущей задаче Codex и не запускает плавающую панель.
         if (args.Count >= 2 && args[0].Equals("--ipc-probe", StringComparison.OrdinalIgnoreCase))
         {
             using var routeMonitor = new CodexIpcActiveThreadMonitor();
@@ -93,7 +93,7 @@ internal static class ProbeRunner
             return true;
         }
 
-        // 窗口探针用于验证当前交互桌面可见的 Codex 顶层窗口信息。
+        // Проверка окон собирает сведения о видимых окнах Codex на текущем рабочем столе.
         if (args.Count >= 2 && args[0].Equals("--window-probe", StringComparison.OrdinalIgnoreCase))
         {
             PrepareWindowProbeDpiAwareness();
@@ -101,7 +101,7 @@ internal static class ProbeRunner
             return true;
         }
 
-        // 线程切换探针在同一个监视器实例中验证静止日志间的路由切换。
+        // Проверка переключения потоков отслеживает смену маршрута между неизменившимися журналами в одном экземпляре монитора.
         if (args.Count >= 4 && args[0].Equals("--thread-switch-probe", StringComparison.OrdinalIgnoreCase))
         {
             using var monitor = new TokenLogMonitor(sessionRoot);
@@ -121,7 +121,7 @@ internal static class ProbeRunner
             return true;
         }
 
-        // 探针模式用于构建后验证真实会话日志，不启动任何界面。
+        // Режим проверки после сборки читает журнал реальной сессии и не запускает интерфейс.
         if (args.Count >= 2 && args[0].Equals("--probe", StringComparison.OrdinalIgnoreCase))
         {
             using var monitor = new TokenLogMonitor(sessionRoot);
@@ -144,7 +144,7 @@ internal static class ProbeRunner
     private static T ReadJson<T>(string path)
     {
         return JsonSerializer.Deserialize<T>(File.ReadAllText(path, Encoding.UTF8), JsonOptions)
-            ?? throw new JsonException($"JSON 探针请求为空：{path}");
+            ?? throw new JsonException($"Запрос JSON для проверки пуст: {path}");
     }
 
     private static object ExecuteLayoutProbe(string path)
@@ -159,7 +159,7 @@ internal static class ProbeRunner
             if (operation?.Equals("ConvertCaptionBounds", StringComparison.OrdinalIgnoreCase) == true)
             {
                 var conversion = item.Deserialize<CaptionBoundsProbeRequest>(JsonOptions)
-                    ?? throw new JsonException("标题按钮坐标转换请求为空。");
+                    ?? throw new JsonException("Запрос на преобразование координат кнопки заголовка пуст.");
                 results.Add(new CaptionBoundsProbeResult(
                     conversion.Name,
                     CodexWindowLocator.ConvertRelativeToScreen(
@@ -169,7 +169,7 @@ internal static class ProbeRunner
             }
 
             var layoutCase = item.Deserialize<LayoutProbeCaseRequest>(JsonOptions)
-                ?? throw new JsonException("布局探针案例为空。");
+                ?? throw new JsonException("Сценарий проверки макета пуст.");
             var layoutResult = LayoutProbe.Execute(new LayoutProbeRequest { Cases = [layoutCase] });
             results.Add(layoutResult.Cases[0]);
         }
@@ -200,7 +200,7 @@ internal static class ProbeRunner
                     DeserializeAttachmentCase<AttachmentScaleProbeRequest>(item)),
                 "EditState" => ExecuteEditStateProbe(
                     DeserializeAttachmentCase<AttachmentEditStateProbeRequest>(item)),
-                _ => throw new InvalidOperationException($"未知的手动吸附探针操作：{operation}")
+                _ => throw new InvalidOperationException($"Неизвестная операция проверки ручной привязки: {operation}")
             });
         }
 
@@ -210,7 +210,7 @@ internal static class ProbeRunner
     private static T DeserializeAttachmentCase<T>(JsonElement item)
     {
         return item.Deserialize<T>(JsonOptions)
-            ?? throw new JsonException("手动吸附探针案例为空。");
+            ?? throw new JsonException("Сценарий проверки ручной привязки пуст.");
     }
 
     private static object ExecuteReferencePointsProbe(AttachmentReferencePointsProbeRequest request)
@@ -573,7 +573,7 @@ internal static class ProbeRunner
         form.SimulateEditResize(start, current);
         form.EditPreviewChanged -= CapturePreview;
         form.SimulateEditGestureCompleted(current);
-        return preview ?? throw new InvalidOperationException("缩放模拟未产生预览事件。");
+        return preview ?? throw new InvalidOperationException("Имитация изменения масштаба не вызвала событие предварительного просмотра.");
 
         void CapturePreview(object? sender, OverlayEditPreviewEventArgs eventArgs) => preview = eventArgs;
     }

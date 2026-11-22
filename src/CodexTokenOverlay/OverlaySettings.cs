@@ -303,13 +303,13 @@ internal sealed class OverlaySettings
 
             if (index + 1 >= args.Count || string.IsNullOrWhiteSpace(args[index + 1]))
             {
-                throw new ArgumentException("--settings 后必须提供绝对设置文件路径。", nameof(args));
+                throw new ArgumentException("После --settings нужно указать абсолютный путь к файлу настроек.", nameof(args));
             }
 
             var candidate = args[index + 1];
             if (!Path.IsPathFullyQualified(candidate))
             {
-                throw new ArgumentException("--settings 只接受绝对设置文件路径。", nameof(args));
+                throw new ArgumentException("Параметр --settings принимает только абсолютный путь к файлу настроек.", nameof(args));
             }
 
             return Path.GetFullPath(candidate);
@@ -411,7 +411,7 @@ internal static class SettingsProbe
                 "Select" => Select(probeCase),
                 "Load" => Load(probeCase),
                 "SaveReload" => SaveReload(probeCase),
-                _ => throw new ArgumentException($"不支持的设置探针操作：{probeCase.Operation}")
+                _ => throw new ArgumentException($"Не поддерживается операция проверки настроек: {probeCase.Operation}")
             };
             results.Add(new SettingsProbeCaseResult(probeCase.Name, result.Settings, result.MustPersist));
         }
@@ -425,7 +425,7 @@ internal static class SettingsProbe
         if (!Enum.TryParse<CollapsedSlot>(probeCase.Slot, ignoreCase: true, out var slot)
             || !probeCase.Field.HasValue)
         {
-            throw new ArgumentException("Select 设置探针需要有效的 Slot 和 Field。", nameof(probeCase));
+            throw new ArgumentException("Для операции проверки Select укажите допустимые значения Slot и Field.", nameof(probeCase));
         }
 
         result.Settings.SelectCollapsedField(slot, (DisplayField)probeCase.Field.Value);
@@ -466,7 +466,7 @@ internal static class SettingsProbe
     private static string RequireJson(SettingsProbeCase probeCase)
     {
         return probeCase.Json ?? throw new ArgumentException(
-            "设置探针操作需要 Json。",
+            "Для проверки настроек требуется значение Json.",
             nameof(probeCase));
     }
 
@@ -476,7 +476,7 @@ internal static class SettingsProbe
             || !Path.IsPathFullyQualified(probeCase.SettingsPath))
         {
             throw new ArgumentException(
-                "设置探针需要绝对临时设置路径。",
+                "Для проверки настроек требуется абсолютный путь к временному файлу настроек.",
                 nameof(probeCase));
         }
 
@@ -485,7 +485,7 @@ internal static class SettingsProbe
         if (!path.StartsWith(temporaryRoot, StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
-                "设置探针只能使用临时设置路径。",
+                "При проверке настроек разрешён только путь к временному файлу.",
                 nameof(probeCase));
         }
 

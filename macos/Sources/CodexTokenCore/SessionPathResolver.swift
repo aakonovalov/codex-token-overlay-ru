@@ -48,11 +48,11 @@ public enum SessionPathResolver {
             candidates.append(normalize(explicitSocket, homeDirectory: homeDirectory))
         }
 
-        // 当前 Codex Desktop 将主 IPC Socket 放在 CODEX_HOME/ipc/ipc.sock。
+        // Текущая версия Codex Desktop хранит основной сокет IPC в CODEX_HOME/ipc/ipc.sock.
         let codexHome = resolveCodexHome(environment: environment, homeDirectory: homeDirectory)
         candidates.append((codexHome as NSString).appendingPathComponent("ipc/ipc.sock"))
 
-        // 兼容旧版或不同分发渠道曾使用的临时目录位置。
+        // Совместимость со старыми версиями и сборками из других каналов, использовавшими временный каталог.
         let temporaryIPC = (temporaryDirectory as NSString).appendingPathComponent("codex-ipc")
         candidates.append((temporaryIPC as NSString).appendingPathComponent("ipc-\(userID).sock"))
         candidates.append((temporaryIPC as NSString).appendingPathComponent("ipc.sock"))

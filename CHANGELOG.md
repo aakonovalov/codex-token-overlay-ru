@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-23
+
+- Завершён перевод сообщений, документации, сценариев сборки и тестов. Интерфейс macOS использует русский язык, если он выбран основным в системе.
+- Скорректировано начальное положение виджета Windows при увеличении до 130%. Проверки интерфейса учитывают русские подписи и новые размеры.
+
 ## [0.4.0] - 2026-11-12
 
 ### Added
@@ -80,7 +85,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Configurable visible fields and overlay placement through the system tray.
 - Per-user settings persisted under Local AppData.
 
-[Unreleased]: ../../compare/v0.4.0...HEAD
+[Unreleased]: ../../compare/v0.4.1...HEAD
+[0.4.1]: ../../compare/ru-0.4.0...v0.4.1
 [0.4.0]: ../../compare/v0.3.0...v0.4.0
 [0.3.0]: ../../compare/v0.2.1...v0.3.0
 [0.2.1]: ../../releases/tag/v0.2.1
